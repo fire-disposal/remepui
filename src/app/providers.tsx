@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect } from "react";
-import { MantineProvider, createTheme } from "@mantine/core";
+import { MantineProvider, createTheme, MantineColorsTuple } from "@mantine/core";
 import { ModalsProvider } from "@mantine/modals";
 import { Notifications } from "@mantine/notifications";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -10,6 +10,20 @@ import { useShellStore } from "../shared/store/shell";
 interface AppProvidersProps {
   children: ReactNode;
 }
+
+// 自定义灰色色阶，让 dimmed 颜色在浅色模式下更清晰
+const customGray: MantineColorsTuple = [
+  "#f8f9fa", // 0 - 最浅
+  "#f1f3f5", // 1
+  "#e9ecef", // 2
+  "#dee2e6", // 3
+  "#ced4da", // 4
+  "#adb5bd", // 5
+  "#6c757d", // 6 - dimmed 使用这个，比默认更深
+  "#495057", // 7
+  "#343a40", // 8
+  "#212529", // 9 - 最深
+];
 
 /**
  * 创建 Mantine 主题
@@ -22,6 +36,9 @@ function createAppTheme(primaryColor: string) {
       fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
     },
     defaultRadius: "md",
+    colors: {
+      gray: customGray,
+    },
   });
 }
 
