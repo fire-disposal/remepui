@@ -1,11 +1,9 @@
 import { create } from 'zustand';
 import { logger } from '../logger';
+import type { UserInfo } from '../api/types';
 
-export interface User {
-  id: string;
-  username: string;
-  email?: string;
-  roles?: string[];
+export interface User extends UserInfo {
+  // 扩展用户信息
 }
 
 export interface AuthState {
@@ -24,6 +22,30 @@ export interface AuthState {
 
 const STORAGE_KEY = 'auth_token';
 const USER_STORAGE_KEY = 'auth_user';
+
+/**
+ * 解析 JWT token 获取过期时间
+ */
+function getTokenExpiration(token: string): number | null {
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) return null;
+    const decoded = JSON.parse(atob(payload));
+    return decoded.exp ? decoded.exp * 1000 : null; // 转换为毫秒
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 检查 token 是否过期
+ */
+function isTokenExpired(token: string): boolean {
+  const expiration = getTokenExpiration(token);
+  if (!expiration) return true;
+  // 提前 5 分钟判断为过期，给刷新留出时间
+  return Date.now() >= expiration - 5 * 60 * 1000;
+}
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
@@ -77,6 +99,15 @@ export const useAuthStore = create<AuthState>((set) => ({
     const userStr = localStorage.getItem(USER_STORAGE_KEY);
 
     if (token && userStr) {
+      // 检查 token 是否过期
+      if (isTokenExpired(token)) {
+        logger.info('Token expired, clearing auth state');
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(USER_STORAGE_KEY);
+        set({ loading: false });
+        return;
+      }
+
       try {
         const user = JSON.parse(userStr);
         set({

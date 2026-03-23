@@ -13,8 +13,9 @@ import {
   Group,
   Divider,
   rem,
+  ThemeIcon,
 } from "@mantine/core";
-import { IconAlertCircle, IconLock, IconUser } from "@tabler/icons-react";
+import { IconAlertCircle, IconLock, IconUser, IconHeartbeat } from "@tabler/icons-react";
 import { useAuth } from "../../../shared/hooks/useAuth";
 import { logger } from "../../../shared/logger";
 
@@ -36,7 +37,7 @@ export const LoginPage = () => {
     setError("");
 
     if (!username.trim() || !password.trim()) {
-      setError("Please enter both username and password");
+      setError("请输入用户名和密码");
       return;
     }
 
@@ -44,7 +45,7 @@ export const LoginPage = () => {
       logger.info("Login attempt", { username });
       await login(username, password);
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : "Login failed";
+      const errorMsg = err instanceof Error ? err.message : "登录失败，请检查用户名和密码";
       setError(errorMsg);
       logger.error("Login failed", err);
     }
@@ -66,12 +67,19 @@ export const LoginPage = () => {
         <Stack gap="xl">
           {/* Logo and Title */}
           <Box style={{ textAlign: "center" }}>
-            <Box style={{ fontSize: rem(48), marginBottom: rem(16) }}>🎯</Box>
-            <Title order={1} style={{ fontSize: rem(32), fontWeight: 700 }}>
-              RemepUI
+            <ThemeIcon
+              size={80}
+              radius="xl"
+              variant="white"
+              style={{ marginBottom: rem(16) }}
+            >
+              <IconHeartbeat size={48} color="#667eea" />
+            </ThemeIcon>
+            <Title order={1} style={{ fontSize: rem(32), fontWeight: 700, color: "white" }}>
+              Remipedia
             </Title>
-            <Text color="dimmed" size="sm" mt={8}>
-              Sign in to your account
+            <Text color="white" size="sm" mt={8} opacity={0.9}>
+              IoT 健康数据平台
             </Text>
           </Box>
 
@@ -81,32 +89,34 @@ export const LoginPage = () => {
               <Stack gap="md">
                 {/* Username Input */}
                 <TextInput
-                  label="Username"
-                  placeholder="Enter your username"
+                  label="用户名"
+                  placeholder="请输入用户名"
                   leftSection={<IconUser size={iconSize} />}
                   value={username}
                   onChange={(e) => setUsername(e.currentTarget.value)}
                   disabled={isLoading}
                   autoFocus
                   required
+                  size="md"
                 />
 
                 {/* Password Input */}
                 <PasswordInput
-                  label="Password"
-                  placeholder="Enter your password"
+                  label="密码"
+                  placeholder="请输入密码"
                   leftSection={<IconLock size={iconSize} />}
                   value={password}
                   onChange={(e) => setPassword(e.currentTarget.value)}
                   disabled={isLoading}
                   required
+                  size="md"
                 />
 
                 {/* Error Alert */}
                 {error && (
                   <Alert
                     icon={<IconAlertCircle size={16} />}
-                    title="Login Failed"
+                    title="登录失败"
                     color="red"
                     variant="light"
                     onClose={() => setError("")}
@@ -122,33 +132,37 @@ export const LoginPage = () => {
                   loading={isLoading}
                   disabled={isLoading || !username.trim() || !password.trim()}
                   size="md"
+                  mt="md"
                 >
-                  {isLoading ? "Signing in..." : "Sign In"}
+                  {isLoading ? "登录中..." : "登 录"}
                 </Button>
               </Stack>
             </form>
           </Paper>
 
-          <Divider />
+          <Divider style={{ borderColor: "rgba(255,255,255,0.3)" }} />
 
           {/* Demo Info */}
           <Paper
             p="md"
             radius="md"
-            style={{ backgroundColor: "#e7f5ff", border: "1px solid #a5d8ff" }}
+            style={{ backgroundColor: "rgba(255,255,255,0.15)", border: "none" }}
           >
             <Group justify="space-between" align="flex-start">
               <Stack gap={4}>
-                <Text size="sm" fw={600}>
-                  Demo Mode
+                <Text size="sm" fw={600} color="white">
+                  默认管理员账户
                 </Text>
-                <Text size="sm" color="dimmed">
-                  Use any credentials to test
+                <Text size="sm" color="white" opacity={0.9}>
+                  用户名: admin
+                </Text>
+                <Text size="sm" color="white" opacity={0.9}>
+                  密码: admin123
                 </Text>
               </Stack>
               <Box
                 style={{
-                  backgroundColor: "#0066cc",
+                  backgroundColor: "rgba(255,255,255,0.2)",
                   color: "white",
                   padding: "8px 12px",
                   borderRadius: "4px",
@@ -163,8 +177,8 @@ export const LoginPage = () => {
 
           {/* Footer */}
           <Group justify="center">
-            <Text size="xs" color="dimmed">
-              © 2024 RemepUI. All rights reserved.
+            <Text size="xs" color="white" opacity={0.7}>
+              © 2024 Remipedia IoT Health Platform
             </Text>
           </Group>
         </Stack>

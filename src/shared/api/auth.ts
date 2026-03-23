@@ -1,59 +1,83 @@
 import { apiClient } from "./client";
-import type { User } from "../store/auth";
+import type {
+  LoginRequest,
+  LoginResponse,
+  RefreshTokenRequest,
+  RefreshTokenResponse,
+  ChangePasswordRequest,
+} from "./types";
 
-export interface LoginRequest {
-  username: string;
-  password: string;
-}
+// Refresh token 存储 key
+const REFRESH_TOKEN_KEY = "refresh_token";
 
-export interface LoginResponse {
-  token: string;
-  user: User;
-}
-
-export interface RegisterRequest {
-  username: string;
-  email: string;
-  password: string;
+/**
+ * 存储 refresh token
+ */
+export function setRefreshToken(token: string): void {
+  localStorage.setItem(REFRESH_TOKEN_KEY, token);
 }
 
 /**
- * Auth API Service
- * 处理所有认证相关的 API 调用
+ * 获取 refresh token
+ */
+export function getRefreshToken(): string | null {
+  return localStorage.getItem(REFRESH_TOKEN_KEY);
+}
+
+/**
+ * 清除 refresh token
+ */
+export function clearRefreshToken(): void {
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+}
+
+/**
+ * 认证 API 服务
  */
 export const authApi = {
   /**
    * 用户登录
    */
-  login: (data: LoginRequest): Promise<LoginResponse> => {
-    return apiClient.post("/auth/login", data);
+  async login(data: LoginRequest): Promise<LoginResponse> {
+    const response = await apiClient.post("/auth/login", data) as unknown as LoginResponse;
+    // 保存 refresh token
+    if (response.refresh_token) {
+      setRefreshToken(response.refresh_token);
+    }
+    return response;
   },
 
   /**
-   * 用户注册
+   * 刷新令牌
    */
-  register: (data: RegisterRequest): Promise<LoginResponse> => {
-    return apiClient.post("/auth/register", data);
+  async refreshToken(data: RefreshTokenRequest): Promise<RefreshTokenResponse> {
+    const response = await apiClient.post("/auth/refresh", data) as unknown as RefreshTokenResponse;
+    // 更新 refresh token
+    if (response.refresh_token) {
+      setRefreshToken(response.refresh_token);
+    }
+    return response;
   },
 
   /**
-   * 刷新 Token
+   * 修改密码
    */
-  refreshToken: (): Promise<{ token: string }> => {
-    return apiClient.post("/auth/refresh");
+  async changePassword(data: ChangePasswordRequest): Promise<{ success: boolean }> {
+    return apiClient.post("/auth/change-password", data) as unknown as Promise<{ success: boolean }>;
   },
 
   /**
-   * 获取当前用户信息
+   * 登出
    */
-  getCurrentUser: (): Promise<User> => {
-    return apiClient.get("/auth/me");
-  },
-
-  /**
-   * 用户登出（通知后端）
-   */
-  logout: (): Promise<void> => {
-    return apiClient.post("/auth/logout");
+  async logout(): Promise<void> {
+    const refreshToken = getRefreshToken();
+    if (refreshToken) {
+      try {
+        await apiClient.post("/auth/logout", { refresh_token: refreshToken });
+      } catch {
+        // 忽略登出错误
+      }
+    }
+    clearRefreshToken();
   },
 };

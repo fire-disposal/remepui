@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { useAuthStore } from "../store/auth";
-import { authApi } from "../api/auth";
+import { authApi, clearRefreshToken } from "../api/auth";
 import { toast } from "../ui/toast";
 import { logger } from "../logger";
 
@@ -10,6 +11,7 @@ import { logger } from "../logger";
  */
 export const useAuth = () => {
   const authStore = useAuthStore();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
 
   const login = useCallback(
@@ -19,26 +21,26 @@ export const useAuth = () => {
         logger.info("Attempting login", { username });
 
         const response = await authApi.login({ username, password });
-        const { token, user } = response;
+        const { access_token, user } = response;
 
-        authStore.setToken(token);
+        authStore.setToken(access_token);
         authStore.setUser(user);
 
-        toast.success(`Welcome back, ${user.username}!`);
+        toast.success(`欢迎回来, ${user.username}!`);
         logger.info("Login successful", { username: user.username });
 
-        // 重定向到首页
-        window.location.href = "/";
+        // 使用 router 导航到首页
+        navigate({ to: "/" });
       } catch (error) {
         const errorMsg =
-          error instanceof Error ? error.message : "Login failed";
+          error instanceof Error ? error.message : "登录失败";
         toast.error(errorMsg);
         logger.error("Login failed", error);
       } finally {
         setIsLoading(false);
       }
     },
-    [authStore],
+    [authStore, navigate],
   );
 
   const logout = useCallback(async () => {
@@ -54,45 +56,47 @@ export const useAuth = () => {
         logger.warn("Logout API call failed, proceeding with local logout", e);
       }
 
+      // 清除 refresh token
+      clearRefreshToken();
+      
       authStore.logout();
-      toast.success("Logged out successfully");
+      toast.success("已成功登出");
 
-      // 重定向到登录页
-      window.location.href = "/login";
+      // 使用 router 导航到登录页
+      navigate({ to: "/login" });
     } catch (error) {
       logger.error("Logout error", error);
-      toast.error("Logout failed");
+      toast.error("登出失败");
     } finally {
       setIsLoading(false);
     }
-  }, [authStore]);
+  }, [authStore, navigate]);
 
-  const register = useCallback(
-    async (username: string, email: string, password: string) => {
+  const changePassword = useCallback(
+    async (oldPassword: string, newPassword: string) => {
       try {
         setIsLoading(true);
-        logger.info("Attempting register", { username, email });
+        logger.info("Attempting password change");
 
-        const response = await authApi.register({ username, email, password });
-        const { token, user } = response;
+        await authApi.changePassword({
+          old_password: oldPassword,
+          new_password: newPassword,
+        });
 
-        authStore.setToken(token);
-        authStore.setUser(user);
-
-        toast.success("Account created successfully!");
-        logger.info("Registration successful", { username });
-
-        window.location.href = "/";
+        toast.success("密码修改成功");
+        logger.info("Password changed successfully");
+        return true;
       } catch (error) {
         const errorMsg =
-          error instanceof Error ? error.message : "Registration failed";
+          error instanceof Error ? error.message : "密码修改失败";
         toast.error(errorMsg);
-        logger.error("Registration failed", error);
+        logger.error("Password change failed", error);
+        return false;
       } finally {
         setIsLoading(false);
       }
     },
-    [authStore],
+    [],
   );
 
   return {
@@ -102,6 +106,6 @@ export const useAuth = () => {
     isLoading,
     login,
     logout,
-    register,
+    changePassword,
   };
 };

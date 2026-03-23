@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   Container,
   Title,
@@ -8,153 +9,334 @@ import {
   Card,
   Group,
   Button,
+  Badge,
+  ThemeIcon,
+  Progress,
+  Skeleton,
+  ActionIcon,
+  Tooltip,
 } from "@mantine/core";
+import {
+  IconUsers,
+  IconDeviceDesktop,
+  IconLink,
+  IconChartLine,
+  IconRefresh,
+  IconArrowRight,
+  IconHeartbeat,
+  IconAlertTriangle,
+  IconCheck,
+  IconClock,
+} from "@tabler/icons-react";
 import { useAuthStore } from "../../../shared/store/auth";
+import { usePatients, useDevices, useBindings, useData } from "../../../shared/api";
 import { logger } from "../../../shared/logger";
+
+interface StatCardProps {
+  title: string;
+  value: number | string;
+  icon: React.ReactNode;
+  color: string;
+  loading?: boolean;
+  subtitle?: string;
+}
+
+function StatCard({ title, value, icon, color, loading, subtitle }: StatCardProps) {
+  return (
+    <Card withBorder p="lg" radius="md">
+      <Group justify="space-between" mb="xs">
+        <Text size="sm" color="dimmed" fw={500}>
+          {title}
+        </Text>
+        <ThemeIcon variant="light" color={color} size="lg" radius="md">
+          {icon}
+        </ThemeIcon>
+      </Group>
+      {loading ? (
+        <Skeleton height={32} mt="sm" />
+      ) : (
+        <>
+          <Text fw={700} size="xl">
+            {value}
+          </Text>
+          {subtitle && (
+            <Text size="xs" color="dimmed" mt={4}>
+              {subtitle}
+            </Text>
+          )}
+        </>
+      )}
+    </Card>
+  );
+}
 
 /**
  * 仪表板页面
  * - 显示欢迎信息
- * - 用户信息
- * - 导航到其他功能
+ * - 统计数据
+ * - 快捷操作
  */
 export const DashboardPage = () => {
   const user = useAuthStore((state) => state.user);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  logger.info("Dashboard page rendered", { username: user?.username });
+  // 获取统计数据
+  const { data: patientsData, isLoading: patientsLoading, refetch: refetchPatients } = usePatients();
+  const { data: devicesData, isLoading: devicesLoading, refetch: refetchDevices } = useDevices();
+  const { data: bindingsData, isLoading: bindingsLoading, refetch: refetchBindings } = useBindings({ active_only: true });
+  const { data: recentData, isLoading: dataLoading, refetch: refetchData } = useData({ page: 1, page_size: 5 });
+
+  const handleRefresh = () => {
+    setRefreshKey((k) => k + 1);
+    refetchPatients();
+    refetchDevices();
+    refetchBindings();
+    refetchData();
+  };
+
+  useEffect(() => {
+    logger.info("Dashboard page rendered", { username: user?.username });
+  }, [user?.username]);
+
+  const stats = {
+    patients: patientsData?.pagination?.total || 0,
+    devices: devicesData?.pagination?.total || 0,
+    activeDevices: devicesData?.data?.filter((d) => d.status === "active").length || 0,
+    bindings: bindingsData?.pagination?.total || 0,
+  };
+
+  const recentRecords = recentData?.data || [];
 
   return (
     <Container size="lg" py="xl">
       <Stack gap="xl">
         {/* 欢迎部分 */}
-        <div>
-          <Title order={1}>Dashboard</Title>
-          <Text color="dimmed" mt={8}>
-            Welcome back, <strong>{user?.username}</strong>!
-          </Text>
-        </div>
+        <Group justify="space-between">
+          <div>
+            <Group gap="sm">
+              <Title order={2}>仪表板</Title>
+              {user?.role === "admin" && (
+                <Badge variant="light" color="red" leftSection={<Text size="xs">🛡️</Text>}>
+                  管理员
+                </Badge>
+              )}
+            </Group>
+            <Text color="dimmed" mt={4}>
+              欢迎回来，<strong>{user?.username}</strong>！
+            </Text>
+          </div>
+          <Tooltip label="刷新数据">
+            <ActionIcon variant="light" size="lg" onClick={handleRefresh}>
+              <IconRefresh size={20} />
+            </ActionIcon>
+          </Tooltip>
+        </Group>
 
-        {/* 用户信息卡片 */}
+        {/* 统计卡片 */}
         <Grid>
           <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-            <Card withBorder p="lg" radius="md">
-              <Stack gap="sm">
-                <Text fw={600} size="sm" color="dimmed" tt="uppercase">
-                  Username
-                </Text>
-                <Text fw={700} size="lg">
-                  {user?.username}
-                </Text>
-              </Stack>
-            </Card>
+            <StatCard
+              title="患者总数"
+              value={stats.patients}
+              icon={<IconUsers size={20} />}
+              color="blue"
+              loading={patientsLoading}
+              subtitle="已注册患者"
+            />
           </Grid.Col>
 
           <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-            <Card withBorder p="lg" radius="md">
-              <Stack gap="sm">
-                <Text fw={600} size="sm" color="dimmed" tt="uppercase">
-                  User ID
-                </Text>
-                <Text fw={700} size="lg">
-                  {user?.id}
-                </Text>
-              </Stack>
-            </Card>
+            <StatCard
+              title="设备总数"
+              value={stats.devices}
+              icon={<IconDeviceDesktop size={20} />}
+              color="violet"
+              loading={devicesLoading}
+              subtitle={`${stats.activeDevices} 台活跃`}
+            />
           </Grid.Col>
 
           <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-            <Card withBorder p="lg" radius="md">
-              <Stack gap="sm">
-                <Text fw={600} size="sm" color="dimmed" tt="uppercase">
-                  Status
-                </Text>
-                <Text fw={700} size="lg" c="green">
-                  Authenticated
-                </Text>
-              </Stack>
-            </Card>
+            <StatCard
+              title="有效绑定"
+              value={stats.bindings}
+              icon={<IconLink size={20} />}
+              color="teal"
+              loading={bindingsLoading}
+              subtitle="设备-患者绑定"
+            />
           </Grid.Col>
 
           <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-            <Card withBorder p="lg" radius="md">
-              <Stack gap="sm">
-                <Text fw={600} size="sm" color="dimmed" tt="uppercase">
-                  Roles
-                </Text>
-                <Text fw={700} size="lg">
-                  {user?.roles?.length ? user.roles.join(", ") : "User"}
-                </Text>
-              </Stack>
-            </Card>
+            <StatCard
+              title="数据记录"
+              value={recentData?.pagination?.total || 0}
+              icon={<IconChartLine size={20} />}
+              color="orange"
+              loading={dataLoading}
+              subtitle="健康数据条数"
+            />
           </Grid.Col>
         </Grid>
 
-        {/* 功能卡片 */}
+        {/* 设备状态概览 */}
         <Paper p="lg" radius="md" withBorder>
-          <Stack gap="md">
-            <div>
-              <Title order={3}>Getting Started</Title>
-              <Text color="dimmed" size="sm" mt={4}>
-                Your application is fully set up with authentication, routing,
-                and state management.
-              </Text>
-            </div>
-
-            <Stack gap="sm">
-              <Text size="sm">✅ TanStack Router with type-safe routes</Text>
-              <Text size="sm">✅ JWT authentication with Zustand store</Text>
-              <Text size="sm">✅ Axios with request/response interceptors</Text>
-              <Text size="sm">✅ Mantine UI components and theme</Text>
-              <Text size="sm">
-                ✅ TanStack Query for server state management
-              </Text>
-              <Text size="sm">✅ Logger and Toast notification system</Text>
-              <Text size="sm">✅ Dynamic system shell configuration</Text>
-            </Stack>
-
-            <Group mt="md">
-              <Button variant="light" size="sm" disabled>
-                Documentation
-              </Button>
-              <Button variant="light" size="sm" disabled>
-                Examples
-              </Button>
-            </Group>
-          </Stack>
+          <Group justify="space-between" mb="md">
+            <Title order={4}>设备状态概览</Title>
+            <Button
+              variant="subtle"
+              size="xs"
+              rightSection={<IconArrowRight size={14} />}
+              component="a"
+              href="/devices"
+            >
+              查看全部
+            </Button>
+          </Group>
+          {devicesLoading ? (
+            <Skeleton height={100} />
+          ) : (
+            <Grid>
+              <Grid.Col span={4}>
+                <Card padding="sm" radius="md" style={{ backgroundColor: "#e6fcf5" }}>
+                  <Group gap="xs">
+                    <ThemeIcon color="teal" variant="light" size="sm">
+                      <IconCheck size={14} />
+                    </ThemeIcon>
+                    <div>
+                      <Text size="xs" color="dimmed">活跃设备</Text>
+                      <Text fw={700} size="lg" c="teal">
+                        {devicesData?.data?.filter((d) => d.status === "active").length || 0}
+                      </Text>
+                    </div>
+                  </Group>
+                </Card>
+              </Grid.Col>
+              <Grid.Col span={4}>
+                <Card padding="sm" radius="md" style={{ backgroundColor: "#f8f9fa" }}>
+                  <Group gap="xs">
+                    <ThemeIcon color="gray" variant="light" size="sm">
+                      <IconClock size={14} />
+                    </ThemeIcon>
+                    <div>
+                      <Text size="xs" color="dimmed">未激活</Text>
+                      <Text fw={700} size="lg" c="gray">
+                        {devicesData?.data?.filter((d) => d.status === "inactive").length || 0}
+                      </Text>
+                    </div>
+                  </Group>
+                </Card>
+              </Grid.Col>
+              <Grid.Col span={4}>
+                <Card padding="sm" radius="md" style={{ backgroundColor: "#fff4e6" }}>
+                  <Group gap="xs">
+                    <ThemeIcon color="orange" variant="light" size="sm">
+                      <IconAlertTriangle size={14} />
+                    </ThemeIcon>
+                    <div>
+                      <Text size="xs" color="dimmed">维护中</Text>
+                      <Text fw={700} size="lg" c="orange">
+                        {devicesData?.data?.filter((d) => d.status === "maintenance").length || 0}
+                      </Text>
+                    </div>
+                  </Group>
+                </Card>
+              </Grid.Col>
+            </Grid>
+          )}
         </Paper>
 
-        {/* 下一步 */}
-        <Paper
-          p="lg"
-          radius="md"
-          withBorder
-          style={{ backgroundColor: "#e7f5ff", borderColor: "#a5d8ff" }}
-        >
-          <Stack gap="md">
-            <Title order={4}>Next Steps</Title>
+        {/* 最近数据记录 */}
+        <Paper p="lg" radius="md" withBorder>
+          <Group justify="space-between" mb="md">
+            <Title order={4}>最近数据记录</Title>
+            <Button
+              variant="subtle"
+              size="xs"
+              rightSection={<IconArrowRight size={14} />}
+              component="a"
+              href="/data"
+            >
+              查看全部
+            </Button>
+          </Group>
+          {dataLoading ? (
             <Stack gap="sm">
-              <Text size="sm">
-                1. <strong>Connect Backend:</strong> Update API_BASE_URL in
-                shared/api/client.ts
-              </Text>
-              <Text size="sm">
-                2. <strong>Create API Services:</strong> Add services in
-                shared/api/ directory
-              </Text>
-              <Text size="sm">
-                3. <strong>Build Pages:</strong> Create pages in modules/ with
-                business logic
-              </Text>
-              <Text size="sm">
-                4. <strong>Add Routes:</strong> Create route files in
-                app/routes/
-              </Text>
-              <Text size="sm">
-                5. <strong>Configure Shells:</strong> Customize shells in
-                shared/config/shells.ts
-              </Text>
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} height={40} />
+              ))}
             </Stack>
-          </Stack>
+          ) : recentRecords.length === 0 ? (
+            <Text color="dimmed" ta="center" py="xl">
+              暂无数据记录
+            </Text>
+          ) : (
+            <Stack gap="sm">
+              {recentRecords.map((record, index) => (
+                <Card key={`${record.time}-${index}`} padding="sm" radius="md" withBorder>
+                  <Group justify="space-between">
+                    <Group>
+                      <ThemeIcon variant="light" color="blue" size="sm">
+                        <IconHeartbeat size={14} />
+                      </ThemeIcon>
+                      <div>
+                        <Text size="sm" fw={500}>
+                          {record.data_type}
+                        </Text>
+                        <Text size="xs" color="dimmed">
+                          设备: {record.device_id.slice(0, 8)}...
+                        </Text>
+                      </div>
+                    </Group>
+                    <Text size="xs" color="dimmed">
+                      {new Date(record.time).toLocaleString("zh-CN")}
+                    </Text>
+                  </Group>
+                </Card>
+              ))}
+            </Stack>
+          )}
+        </Paper>
+
+        {/* 快捷操作 */}
+        <Paper p="lg" radius="md" withBorder>
+          <Title order={4} mb="md">
+            快捷操作
+          </Title>
+          <Group gap="md">
+            <Button
+              variant="light"
+              leftSection={<IconUsers size={16} />}
+              component="a"
+              href="/patients"
+            >
+              添加患者
+            </Button>
+            <Button
+              variant="light"
+              leftSection={<IconDeviceDesktop size={16} />}
+              component="a"
+              href="/devices"
+            >
+              注册设备
+            </Button>
+            <Button
+              variant="light"
+              leftSection={<IconLink size={16} />}
+              component="a"
+              href="/bindings"
+            >
+              创建绑定
+            </Button>
+            <Button
+              variant="light"
+              leftSection={<IconChartLine size={16} />}
+              component="a"
+              href="/data"
+            >
+              查看数据
+            </Button>
+          </Group>
         </Paper>
       </Stack>
     </Container>

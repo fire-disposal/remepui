@@ -1,48 +1,103 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import { getShellConfig, type ShellConfig } from '../config/shells';
 import { logger } from '../logger';
-import { type ShellConfig, getShellConfig, DEFAULT_SHELL_ID } from '../config/shells';
-
-const SHELL_STORAGE_KEY = 'app_shell_id';
 
 export interface ShellState {
   currentShellId: string;
   currentShell: ShellConfig;
 
   // Actions
-  setShell: (shellId: string) => void;
+  setShell: (id: string) => void;
   hydrate: () => void;
 }
 
 /**
- * 外壳管理 Store（Zustand）
- * 负责：
- * 1. 管理当前选择的外壳 ID
- * 2. 持久化到 localStorage
- * 3. 提供外壳配置获取
+ * 更新页面标题
  */
-export const useShellStore = create<ShellState>((set) => ({
-  currentShellId: DEFAULT_SHELL_ID,
-  currentShell: getShellConfig(DEFAULT_SHELL_ID),
+function updateDocumentTitle(shell: ShellConfig): void {
+  document.title = shell.title;
+}
 
-  setShell: (shellId: string) => {
-    const config = getShellConfig(shellId);
-    set({
-      currentShellId: shellId,
-      currentShell: config,
-    });
-    localStorage.setItem(SHELL_STORAGE_KEY, shellId);
-    logger.info('Shell changed', { shellId, name: config.name });
-  },
+/**
+ * 更新 Favicon
+ */
+function updateFavicon(shell: ShellConfig): void {
+  // 查找或创建 favicon link 元素
+  let favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+  
+  if (!favicon) {
+    favicon = document.createElement('link');
+    favicon.rel = 'icon';
+    document.head.appendChild(favicon);
+  }
 
-  hydrate: () => {
-    const savedShellId = localStorage.getItem(SHELL_STORAGE_KEY);
-    if (savedShellId) {
-      const config = getShellConfig(savedShellId);
-      set({
-        currentShellId: savedShellId,
-        currentShell: config,
-      });
-      logger.info('Shell hydrated from storage', { shellId: savedShellId });
+  // 如果配置了 favicon URL，使用 URL
+  if (shell.favicon) {
+    favicon.href = shell.favicon;
+    return;
+  }
+
+  // 否则，如果 logo 是 emoji，生成 SVG favicon
+  if (shell.logo && shell.logo.length <= 2) {
+    // 使用 emoji 生成 SVG favicon
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+        <text y=".9em" font-size="90">${shell.logo}</text>
+      </svg>
+    `;
+    favicon.href = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+  }
+}
+
+/**
+ * 外壳状态管理
+ */
+export const useShellStore = create<ShellState>()(
+  persist(
+    (set, get) => ({
+      currentShellId: 'default',
+      currentShell: getShellConfig('default'),
+
+      setShell: (id: string) => {
+        const shell = getShellConfig(id);
+        logger.info('Shell changed', { from: get().currentShellId, to: id });
+        
+        // 更新 DOM
+        updateDocumentTitle(shell);
+        updateFavicon(shell);
+        
+        set({
+          currentShellId: id,
+          currentShell: shell,
+        });
+      },
+
+      hydrate: () => {
+        const state = get();
+        const shell = state.currentShell;
+        
+        // 恢复 DOM 状态
+        updateDocumentTitle(shell);
+        updateFavicon(shell);
+        
+        logger.info('Shell state hydrated', { shellId: state.currentShellId });
+      },
+    }),
+    {
+      name: 'shell-storage',
+      partialize: (state) => ({
+        currentShellId: state.currentShellId,
+      }),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          // 重新获取完整的 shell 配置
+          state.currentShell = getShellConfig(state.currentShellId);
+          // 更新 DOM
+          updateDocumentTitle(state.currentShell);
+          updateFavicon(state.currentShell);
+        }
+      },
     }
-  },
-}));
+  )
+);
