@@ -14,23 +14,34 @@ import {
   Divider,
   rem,
   ThemeIcon,
+  useMantineTheme,
+  useMantineColorScheme,
+  Badge,
 } from "@mantine/core";
-import { IconAlertCircle, IconLock, IconUser, IconHeartbeat } from "@tabler/icons-react";
+import { IconAlertCircle, IconLock, IconUser } from "@tabler/icons-react";
 import { useAuth } from "../../../shared/hooks/useAuth";
+import { useShellStore } from "../../../shared/store/shell";
 import { logger } from "../../../shared/logger";
 
 /**
  * 登录页面
- * - 简洁的设计
+ * - 响应外壳配置变化
+ * - 简洁现代的设计
  * - 用户名/密码输入
  * - 错误处理
  * - 加载状态
  */
 export const LoginPage = () => {
+  const theme = useMantineTheme();
+  const { colorScheme } = useMantineColorScheme();
   const { login, isLoading } = useAuth();
+  const currentShell = useShellStore((state) => state.currentShell);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+
+  const primaryColor = theme.colors[currentShell.primaryColor]?.[6] || theme.colors[theme.primaryColor][6];
+  const isDark = colorScheme === "dark";
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,34 +68,74 @@ export const LoginPage = () => {
     <Box
       style={{
         minHeight: "100vh",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        background: isDark
+          ? `linear-gradient(180deg, ${theme.colors.dark[9]} 0%, ${theme.colors.dark[8]} 50%, ${theme.colors.dark[7]} 100%)`
+          : `linear-gradient(180deg, ${theme.colors.gray[0]} 0%, ${theme.white} 100%)`,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
+        position: "relative",
+        overflow: "hidden",
       }}
     >
-      <Container size={420}>
+      {/* 装饰性背景元素 */}
+      <Box
+        style={{
+          position: "absolute",
+          top: "-20%",
+          right: "-10%",
+          width: "50%",
+          height: "50%",
+          background: `radial-gradient(circle, ${primaryColor}20 0%, transparent 70%)`,
+          borderRadius: "50%",
+        }}
+      />
+      <Box
+        style={{
+          position: "absolute",
+          bottom: "-10%",
+          left: "-5%",
+          width: "40%",
+          height: "40%",
+          background: `radial-gradient(circle, ${theme.colors.teal[6]}15 0%, transparent 70%)`,
+          borderRadius: "50%",
+        }}
+      />
+
+      <Container size={420} style={{ position: "relative", zIndex: 1 }}>
         <Stack gap="xl">
           {/* Logo and Title */}
           <Box style={{ textAlign: "center" }}>
             <ThemeIcon
               size={80}
               radius="xl"
-              variant="white"
+              variant="light"
+              color={currentShell.primaryColor}
               style={{ marginBottom: rem(16) }}
             >
-              <IconHeartbeat size={48} color="#667eea" />
+              <Text style={{ fontSize: rem(36) }}>{currentShell.logo}</Text>
             </ThemeIcon>
-            <Title order={1} style={{ fontSize: rem(32), fontWeight: 700, color: "white" }}>
-              Remipedia
+            <Title order={1} style={{ fontSize: rem(32), fontWeight: 700 }}>
+              {currentShell.title}
             </Title>
-            <Text color="white" size="sm" mt={8} opacity={0.9}>
-              IoT 健康数据平台
+            <Text c="dimmed" size="sm" mt={8}>
+              {currentShell.description || currentShell.name}
             </Text>
           </Box>
 
           {/* Login Card */}
-          <Paper p={30} radius="lg" withBorder shadow="lg">
+          <Paper
+            p={30}
+            radius="lg"
+            style={{
+              backgroundColor: isDark
+                ? "rgba(38, 38, 38, 0.8)"
+                : theme.white,
+              backdropFilter: "blur(10px)",
+              border: `1px solid ${isDark ? theme.colors.dark[5] : theme.colors.gray[2]}`,
+            }}
+            shadow="md"
+          >
             <form onSubmit={handleLogin}>
               <Stack gap="md">
                 {/* Username Input */}
@@ -133,6 +184,8 @@ export const LoginPage = () => {
                   disabled={isLoading || !username.trim() || !password.trim()}
                   size="md"
                   mt="md"
+                  variant="gradient"
+                  gradient={{ from: currentShell.primaryColor, to: currentShell.primaryColor, deg: 135 }}
                 >
                   {isLoading ? "登录中..." : "登 录"}
                 </Button>
@@ -140,45 +193,40 @@ export const LoginPage = () => {
             </form>
           </Paper>
 
-          <Divider style={{ borderColor: "rgba(255,255,255,0.3)" }} />
+          <Divider />
 
           {/* Demo Info */}
           <Paper
             p="md"
             radius="md"
-            style={{ backgroundColor: "rgba(255,255,255,0.15)", border: "none" }}
+            style={{
+              backgroundColor: isDark
+                ? theme.colors.dark[6]
+                : theme.colors.gray[0],
+            }}
           >
             <Group justify="space-between" align="flex-start">
               <Stack gap={4}>
-                <Text size="sm" fw={600} color="white">
+                <Text size="sm" fw={600}>
                   默认管理员账户
                 </Text>
-                <Text size="sm" color="white" opacity={0.9}>
+                <Text size="sm" c="dimmed">
                   用户名: admin
                 </Text>
-                <Text size="sm" color="white" opacity={0.9}>
+                <Text size="sm" c="dimmed">
                   密码: admin123
                 </Text>
               </Stack>
-              <Box
-                style={{
-                  backgroundColor: "rgba(255,255,255,0.2)",
-                  color: "white",
-                  padding: "8px 12px",
-                  borderRadius: "4px",
-                }}
-              >
-                <Text size="xs" fw={600}>
-                  DEV
-                </Text>
-              </Box>
+              <Badge color={currentShell.primaryColor} variant="light">
+                DEV
+              </Badge>
             </Group>
           </Paper>
 
           {/* Footer */}
           <Group justify="center">
-            <Text size="xs" color="white" opacity={0.7}>
-              © 2024 Remipedia IoT Health Platform
+            <Text size="xs" c="dimmed">
+              © 2024 {currentShell.title}
             </Text>
           </Group>
         </Stack>

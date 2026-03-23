@@ -11,10 +11,10 @@ import {
   Button,
   Badge,
   ThemeIcon,
-  Progress,
   Skeleton,
   ActionIcon,
   Tooltip,
+  Box,
 } from "@mantine/core";
 import {
   IconUsers,
@@ -27,6 +27,7 @@ import {
   IconAlertTriangle,
   IconCheck,
   IconClock,
+  IconShield,
 } from "@tabler/icons-react";
 import { useAuthStore } from "../../../shared/store/auth";
 import { usePatients, useDevices, useBindings, useData } from "../../../shared/api";
@@ -43,9 +44,9 @@ interface StatCardProps {
 
 function StatCard({ title, value, icon, color, loading, subtitle }: StatCardProps) {
   return (
-    <Card withBorder p="lg" radius="md">
+    <Card withBorder p="lg" radius="md" style={{ overflow: "hidden" }}>
       <Group justify="space-between" mb="xs">
-        <Text size="sm" color="dimmed" fw={500}>
+        <Text size="sm" c="dimmed" fw={500}>
           {title}
         </Text>
         <ThemeIcon variant="light" color={color} size="lg" radius="md">
@@ -60,7 +61,7 @@ function StatCard({ title, value, icon, color, loading, subtitle }: StatCardProp
             {value}
           </Text>
           {subtitle && (
-            <Text size="xs" color="dimmed" mt={4}>
+            <Text size="xs" c="dimmed" mt={4}>
               {subtitle}
             </Text>
           )}
@@ -116,12 +117,16 @@ export const DashboardPage = () => {
             <Group gap="sm">
               <Title order={2}>仪表板</Title>
               {user?.role === "admin" && (
-                <Badge variant="light" color="red" leftSection={<Text size="xs">🛡️</Text>}>
+                <Badge
+                  variant="light"
+                  color="red"
+                  leftSection={<IconShield size={12} />}
+                >
                   管理员
                 </Badge>
               )}
             </Group>
-            <Text color="dimmed" mt={4}>
+            <Text c="dimmed" mt={4}>
               欢迎回来，<strong>{user?.username}</strong>！
             </Text>
           </div>
@@ -198,14 +203,21 @@ export const DashboardPage = () => {
           ) : (
             <Grid>
               <Grid.Col span={4}>
-                <Card padding="sm" radius="md" style={{ backgroundColor: "#e6fcf5" }}>
+                <Card
+                  padding="sm"
+                  radius="md"
+                  style={{
+                    background: "linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%)",
+                    border: "1px solid rgba(16, 185, 129, 0.2)",
+                  }}
+                >
                   <Group gap="xs">
                     <ThemeIcon color="teal" variant="light" size="sm">
                       <IconCheck size={14} />
                     </ThemeIcon>
                     <div>
-                      <Text size="xs" color="dimmed">活跃设备</Text>
-                      <Text fw={700} size="lg" c="teal">
+                      <Text size="xs" c="dimmed">活跃设备</Text>
+                      <Text fw={700} size="lg" c="teal.6">
                         {devicesData?.data?.filter((d) => d.status === "active").length || 0}
                       </Text>
                     </div>
@@ -213,14 +225,21 @@ export const DashboardPage = () => {
                 </Card>
               </Grid.Col>
               <Grid.Col span={4}>
-                <Card padding="sm" radius="md" style={{ backgroundColor: "#f8f9fa" }}>
+                <Card
+                  padding="sm"
+                  radius="md"
+                  style={{
+                    background: "linear-gradient(135deg, rgba(107, 114, 128, 0.1) 0%, rgba(107, 114, 128, 0.05) 100%)",
+                    border: "1px solid rgba(107, 114, 128, 0.2)",
+                  }}
+                >
                   <Group gap="xs">
                     <ThemeIcon color="gray" variant="light" size="sm">
                       <IconClock size={14} />
                     </ThemeIcon>
                     <div>
-                      <Text size="xs" color="dimmed">未激活</Text>
-                      <Text fw={700} size="lg" c="gray">
+                      <Text size="xs" c="dimmed">未激活</Text>
+                      <Text fw={700} size="lg" c="gray.6">
                         {devicesData?.data?.filter((d) => d.status === "inactive").length || 0}
                       </Text>
                     </div>
@@ -228,14 +247,21 @@ export const DashboardPage = () => {
                 </Card>
               </Grid.Col>
               <Grid.Col span={4}>
-                <Card padding="sm" radius="md" style={{ backgroundColor: "#fff4e6" }}>
+                <Card
+                  padding="sm"
+                  radius="md"
+                  style={{
+                    background: "linear-gradient(135deg, rgba(249, 115, 22, 0.1) 0%, rgba(249, 115, 22, 0.05) 100%)",
+                    border: "1px solid rgba(249, 115, 22, 0.2)",
+                  }}
+                >
                   <Group gap="xs">
                     <ThemeIcon color="orange" variant="light" size="sm">
                       <IconAlertTriangle size={14} />
                     </ThemeIcon>
                     <div>
-                      <Text size="xs" color="dimmed">维护中</Text>
-                      <Text fw={700} size="lg" c="orange">
+                      <Text size="xs" c="dimmed">维护中</Text>
+                      <Text fw={700} size="lg" c="orange.6">
                         {devicesData?.data?.filter((d) => d.status === "maintenance").length || 0}
                       </Text>
                     </div>

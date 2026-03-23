@@ -21,7 +21,7 @@ import { useLocation, useNavigate } from "@tanstack/react-router";
 import { useAuthStore } from "../../shared/store/auth";
 import { useShellStore } from "../../shared/store/shell";
 import { useAuth } from "../../shared/hooks/useAuth";
-import { getShellOptions, SHELL_CONFIGS } from "../../shared/config/shells";
+import { getShellOptions, SHELL_CONFIGS, ICON_MAP } from "../../shared/config/shells";
 import { logger } from "../../shared/logger";
 
 interface AppLayoutProps {
@@ -232,22 +232,21 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
         >
           {(styles) => (
             <Stack gap="xs" style={styles}>
-              {currentShell.menuItems.map((item) => (
-                <NavLink
-                  key={item.id}
-                  label={
-                    <Group gap="sm" wrap="nowrap">
-                      <Text style={{ fontSize: "16px" }}>{item.icon || "📄"}</Text>
-                      <span>{item.label}</span>
-                    </Group>
-                  }
-                  onClick={() => handleNavigate(item.path)}
-                  active={location.pathname === item.path}
-                  style={{ cursor: "pointer", borderRadius: "6px" }}
-                  variant="light"
-                  color={theme.primaryColor}
-                />
-              ))}
+              {currentShell.menuItems.map((item) => {
+                const IconComponent = item.icon ? ICON_MAP[item.icon] : null;
+                return (
+                  <NavLink
+                    key={item.id}
+                    label={item.label}
+                    leftSection={IconComponent ? <IconComponent size={20} /> : null}
+                    onClick={() => handleNavigate(item.path)}
+                    active={location.pathname === item.path}
+                    style={{ cursor: "pointer", borderRadius: "6px" }}
+                    variant="light"
+                    color={theme.primaryColor}
+                  />
+                );
+              })}
             </Stack>
           )}
         </Transition>

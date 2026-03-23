@@ -22,7 +22,7 @@ import {
   IconInfoCircle,
 } from "@tabler/icons-react";
 import { useShellStore } from "../../../shared/store/shell";
-import { SHELL_CONFIGS, getShellOptions } from "../../../shared/config/shells";
+import { SHELL_CONFIGS, getShellOptions, ICON_MAP } from "../../../shared/config/shells";
 import { useMantineTheme } from "@mantine/core";
 
 /**
@@ -137,15 +137,23 @@ export const ShellSettingsPage = () => {
 
                 <Divider mb="md" />
 
-                <Text size="xs" color="dimmed" mb="xs">
+                <Text size="xs" c="dimmed" mb="xs">
                   菜单项:
                 </Text>
                 <Group gap={4}>
-                  {shell.menuItems.slice(0, 4).map((item) => (
-                    <Badge key={item.id} size="sm" variant="dot">
-                      {item.label}
-                    </Badge>
-                  ))}
+                  {shell.menuItems.slice(0, 4).map((item) => {
+                    const IconComponent = item.icon ? ICON_MAP[item.icon] : null;
+                    return (
+                      <Badge
+                        key={item.id}
+                        size="sm"
+                        variant="light"
+                        leftSection={IconComponent ? <IconComponent size={12} /> : null}
+                      >
+                        {item.label}
+                      </Badge>
+                    );
+                  })}
                   {shell.menuItems.length > 4 && (
                     <Badge size="sm" variant="outline">
                       +{shell.menuItems.length - 4}
@@ -190,8 +198,8 @@ myCustom: {
   description: '自定义外壳描述',
   primaryColor: 'violet',         // Mantine 颜色名
   menuItems: [
-    { id: 'home', label: '首页', path: '/', icon: '🏠' },
-    { id: 'data', label: '数据', path: '/data', icon: '📊' },
+    { id: 'home', label: '首页', path: '/', icon: 'home' },
+    { id: 'data', label: '数据', path: '/data', icon: 'chart' },
   ],
 },`}
             rows={14}
