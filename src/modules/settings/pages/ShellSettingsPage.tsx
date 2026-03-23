@@ -109,7 +109,7 @@ export const ShellSettingsPage = () => {
                     </ThemeIcon>
                     <div>
                       <Text fw={500}>{shell.name}</Text>
-                      <Text size="xs" color="dimmed">
+                      <Text size="xs">
                         {shell.title}
                       </Text>
                     </div>
