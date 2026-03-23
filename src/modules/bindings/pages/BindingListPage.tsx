@@ -140,7 +140,7 @@ export const BindingListPage = () => {
                 绑定关系
               </Group>
             </Title>
-            <Text color="dimmed" size="sm" mt={4}>
+            <Text size="sm" mt={4}>
               管理设备与患者的绑定关系
             </Text>
           </div>

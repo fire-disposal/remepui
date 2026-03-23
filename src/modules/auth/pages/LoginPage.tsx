@@ -118,7 +118,7 @@ export const LoginPage = () => {
             <Title order={1} style={{ fontSize: rem(32), fontWeight: 700 }}>
               {currentShell.title}
             </Title>
-            <Text c="dimmed" size="sm" mt={8}>
+            <Text size="sm" mt={8}>
               {currentShell.description || currentShell.name}
             </Text>
           </Box>

@@ -137,7 +137,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
                         <Text size="sm" fw={600}>
                           {currentShell.title}
                         </Text>
-                        <Text size="xs" c="dimmed">
+                        <Text size="xs" c={theme.primaryColor}>
                           {currentShell.name}
                         </Text>
                       </div>

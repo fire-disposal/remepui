@@ -126,7 +126,7 @@ export const DashboardPage = () => {
                 </Badge>
               )}
             </Group>
-            <Text c="dimmed" mt={4}>
+            <Text mt={4}>
               欢迎回来，<strong>{user?.username}</strong>！
             </Text>
           </div>

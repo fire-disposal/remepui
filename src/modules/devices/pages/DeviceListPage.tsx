@@ -204,7 +204,7 @@ export const DeviceListPage = () => {
                 设备管理
               </Group>
             </Title>
-            <Text color="dimmed" size="sm" mt={4}>
+            <Text size="sm" mt={4}>
               管理所有 IoT 设备
             </Text>
           </div>

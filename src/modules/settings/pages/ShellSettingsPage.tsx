@@ -48,7 +48,7 @@ export const ShellSettingsPage = () => {
                 外壳设置
               </Group>
             </Title>
-            <Text color="dimmed" size="sm" mt={4}>
+            <Text size="sm" mt={4}>
               选择不同的外壳来改变应用的外观和功能
             </Text>
           </div>

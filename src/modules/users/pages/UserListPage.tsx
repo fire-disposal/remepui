@@ -159,7 +159,7 @@ export const UserListPage = () => {
                 用户管理
               </Group>
             </Title>
-            <Text color="dimmed" size="sm" mt={4}>
+            <Text size="sm" mt={4}>
               管理系统用户账户
             </Text>
           </div>

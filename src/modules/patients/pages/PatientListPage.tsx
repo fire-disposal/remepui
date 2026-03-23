@@ -121,7 +121,7 @@ export const PatientListPage = () => {
                 患者管理
               </Group>
             </Title>
-            <Text color="dimmed" size="sm" mt={4}>
+            <Text size="sm" mt={4}>
               管理所有患者信息
             </Text>
           </div>

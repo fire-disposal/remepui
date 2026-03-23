@@ -77,7 +77,7 @@ export const DataPage = () => {
                 数据查询
               </Group>
             </Title>
-            <Text c="dimmed" size="sm" mt={4}>
+            <Text size="sm" mt={4}>
               查看设备上报的健康数据
             </Text>
           </div>
