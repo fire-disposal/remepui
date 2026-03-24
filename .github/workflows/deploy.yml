@@ -69,6 +69,9 @@ jobs:
           script: |
             echo "Deploying latest image..."
 
+            # Login to GHCR
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
             # Pull latest image
             docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
@@ -86,5 +89,8 @@ jobs:
 
             # Cleanup old images
             docker image prune -f
+
+            # Logout from GHCR
+            docker logout ghcr.io
 
             echo "Deployment completed!"
