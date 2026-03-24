@@ -159,3 +159,9 @@ export interface PresetScenario {
   description: string;
   params: SimulationParams;
 }
+
+// 导出视图层类型
+export * from './view';
+
+// 导出 Bland 评分类型
+export * from './bland';

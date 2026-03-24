@@ -22,7 +22,8 @@ import {
   ParameterPanel, BodyModel, StatusIndicators, TimeControl,
   AlertSystem, DamageChart, SimulationRecords, EducationPanel,
   EventTimeline, EventList, DamageStageIndicator,
-  PredictionChart, SmartRecommendations
+  PredictionChart, SmartRecommendations,
+  BlandScorePanel, BodyModelEnhanced
 } from '../components';
 import type { SimulationRecord, PressureUlcerEvent } from '../types';
 
@@ -312,6 +313,14 @@ export const PressureUlcerPage = () => {
                   />
                 </Stack>
               </Paper>
+
+              {/* Bland 评分面板 */}
+              <BlandScorePanel
+                onScoreChange={(result) => {
+                  // 可以根据 Bland 评分调整仿真参数
+                  console.log('Bland Score:', result);
+                }}
+              />
             </Stack>
           </Grid.Col>
         )}
@@ -350,11 +359,12 @@ export const PressureUlcerPage = () => {
                   </Group>
                 </Box>
                 <Box h={320} style={{ backgroundColor: 'var(--mantine-color-gray-0)' }}>
-                  <BodyModel
+                  <BodyModelEnhanced
                     bodyParts={state.bodyParts}
                     onReposition={handleReposition}
                     isRunning={state.isRunning}
                     isFinished={state.isFinished}
+                    enable3D={true}
                   />
                 </Box>
               </Paper>
