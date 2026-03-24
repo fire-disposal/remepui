@@ -214,7 +214,6 @@ export const BodyModel = ({
               return (
                 <g
                   key={partId}
-                  role="presentation"
                   onMouseEnter={() => setHoveredPart(partId)}
                   onMouseLeave={() => setHoveredPart(null)}
                   style={{ cursor: 'pointer' }}
