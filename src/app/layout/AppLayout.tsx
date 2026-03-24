@@ -254,7 +254,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
 
       {/* 主区域 */}
       <AppShell.Main>
-        <Container size="lg">{children}</Container>
+        {children}
       </AppShell.Main>
     </AppShell>
   );

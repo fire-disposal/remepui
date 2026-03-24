@@ -7,6 +7,7 @@ import { BindingListPage } from "../modules/bindings/pages/BindingListPage";
 import { DataPage } from "../modules/data/pages/DataPage";
 import { UserListPage } from "../modules/users/pages/UserListPage";
 import { ShellSettingsPage } from "../modules/settings/pages/ShellSettingsPage";
+import { PressureUlcerPage } from "../modules/pressure-ulcer";
 import { RootComponent } from "./layout/RootComponent";
 import { useAuthStore } from "../shared/store/auth";
 
@@ -134,6 +135,16 @@ const loginRoute = new Route({
 });
 
 /**
+ * 压力性损伤仿真教学路由 - 需要认证
+ */
+const pressureUlcerRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: "/pressure-ulcer",
+  component: PressureUlcerPage,
+  beforeLoad: checkAuth,
+});
+
+/**
  * 404 路由
  */
 const notFoundRoute = new NotFoundRoute({
@@ -176,6 +187,7 @@ const routeTree = rootRoute.addChildren([
   bindingsRoute,
   dataRoute,
   settingsRoute,
+  pressureUlcerRoute,
   loginRoute,
 ]);
 

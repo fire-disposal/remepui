@@ -21,6 +21,7 @@ import {
   IconShield,
   IconStar,
   IconFlame,
+  IconHeart,
 } from "@tabler/icons-react";
 
 // 图标映射表 - 将图标名称映射到 Tabler Icons 组件
@@ -37,6 +38,7 @@ export const ICON_MAP: Record<string, React.ComponentType<{ size?: number | stri
   shield: IconShield,
   star: IconStar,
   flame: IconFlame,
+  heart: IconHeart,
 };
 
 export interface MenuItem {
@@ -180,6 +182,19 @@ export const SHELL_CONFIGS: Record<string, ShellConfig> = {
       { id: 'devices', label: '设备管理', path: '/devices', icon: 'device' },
       { id: 'data', label: '数据查询', path: '/data', icon: 'chart' },
       { id: 'settings', label: '外壳设置', path: '/settings/shell', icon: 'palette' },
+    ],
+  },
+
+  // 外壳 8：压力性损伤仿真教学
+  'pressure-ulcer': {
+    id: 'pressure-ulcer',
+    name: '压疮仿真教学',
+    logo: '🩹',
+    title: 'Pressure Ulcer Simulation',
+    description: '压力性损伤仿真教学系统',
+    primaryColor: 'pink',
+    menuItems: [
+      { id: 'simulation', label: '仿真教学', path: '/pressure-ulcer', icon: 'heart' },
     ],
   },
 };
