@@ -1,9 +1,19 @@
 /**
  * 3D 人体模型组件
  * 使用 React Three Fiber 实现
+ * 
+ * 架构设计：
+ * - HumanBodyPrimitive: 基础几何体构建的简化人体模型（当前实现）
+ * - HumanBodyGLTF: 从GLTF文件加载的精细模型（未来扩展）
+ * - Mattress: 床垫几何体
+ * 
+ * 未来替换精细模型时，只需：
+ * 1. 准备GLTF/GLB模型文件放入 public/models/
+ * 2. 修改 HUMAN_MODEL_CONFIG.currentModel 为 'gltf'
+ * 3. 实现 HumanBodyGLTF 组件
  */
 
-import { useRef, useMemo, useState, useCallback } from 'react';
+import { useRef, useMemo, useState, useCallback, Suspense } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import {
   OrbitControls,
@@ -12,6 +22,7 @@ import {
   ContactShadows,
   PerspectiveCamera,
   Html,
+  useGLTF,
 } from '@react-three/drei';
 import * as THREE from 'three';
 import {
@@ -20,6 +31,8 @@ import {
   getDamageColor3D,
   getDamageEmissiveIntensity,
   POSTURE_ROTATIONS,
+  MATTRESS_CONFIG,
+  HUMAN_MODEL_CONFIG,
 } from '../config/view.config';
 import type {
   BodyPart,
@@ -138,9 +151,57 @@ const BodyPartMesh = ({
 };
 
 /**
- * 简化人体模型
+ * 床垫组件
  */
-const HumanBody = ({
+const Mattress = () => {
+  const { width, height, depth, position, color, borderColor, pillowColor, pillowPosition, pillowSize } = MATTRESS_CONFIG;
+
+  return (
+    <group position={position}>
+      {/* 主床垫 */}
+      <mesh position={[0, 0, 0]} castShadow receiveShadow>
+        <boxGeometry args={[width, height, depth]} />
+        <meshStandardMaterial
+          color={color}
+          roughness={0.8}
+          metalness={0}
+        />
+      </mesh>
+
+      {/* 床垫边缘 */}
+      <mesh position={[0, -height / 2, 0]}>
+        <boxGeometry args={[width + 0.02, 0.02, depth + 0.02]} />
+        <meshStandardMaterial color={borderColor} roughness={0.6} />
+      </mesh>
+
+      {/* 枕头 */}
+      <mesh position={pillowPosition} castShadow>
+        <boxGeometry args={pillowSize} />
+        <meshStandardMaterial
+          color={pillowColor}
+          roughness={0.9}
+          metalness={0}
+        />
+      </mesh>
+
+      {/* 床单纹理效果 - 使用细线表示 */}
+      <group position={[0, height / 2 + 0.001, 0]}>
+        {Array.from({ length: 8 }).map((_, i) => (
+          <mesh key={`line-h-${i}`} position={[0, 0, -depth / 2 + (i + 1) * (depth / 9)]}>
+            <boxGeometry args={[width - 0.1, 0.002, 0.01]} />
+            <meshStandardMaterial color="#d0e8f0" transparent opacity={0.3} />
+          </mesh>
+        ))}
+      </group>
+    </group>
+  );
+};
+
+/**
+ * 基础几何体人体模型（当前实现）
+ * 使用胶囊体和球体构建简化人体
+ */
+const HumanBodyPrimitive = ({
   bodyParts,
   posture = 'supine',
   onPartHover,
@@ -150,7 +211,7 @@ const HumanBody = ({
   const groupRef = useRef<THREE.Group>(null);
   const [hoveredPart, setHoveredPart] = useState<BodyPartType | null>(null);
 
-  // 姿态旋转
+  // 姿态旋转 - 躺卧姿态
   const postureRotation = useMemo(() => {
     const rot = POSTURE_ROTATIONS[posture];
     return [rot.x, rot.y, rot.z] as [number, number, number];
@@ -194,10 +255,14 @@ const HumanBody = ({
     onPartClick?.(partId);
   }, [onPartClick]);
 
+  // 躺卧姿态下的人体位置调整
+  // 模型原点在中心，躺下后需要调整Y位置使其在床垫上方
+  const lyingOffset = 0.1; // 躺在床垫上的高度偏移
+
   return (
-    <group ref={groupRef} rotation={postureRotation}>
+    <group ref={groupRef} position={[0, lyingOffset, 0]} rotation={postureRotation}>
       {/* 躯干主体 - 简化表示 */}
-      <mesh position={[0, 0.5, 0]}>
+      <mesh position={[0, 0.5, 0]} castShadow>
         <capsuleGeometry args={[0.35, 1.2, 4, 16]} />
         <meshStandardMaterial
           color="#f5d0c5"
@@ -207,17 +272,27 @@ const HumanBody = ({
       </mesh>
 
       {/* 头部 */}
-      <mesh position={[0, 1.4, 0]}>
+      <mesh position={[0, 1.4, 0]} castShadow>
         <sphereGeometry args={[0.2, 32, 32]} />
         <meshStandardMaterial color="#f5d0c5" roughness={0.5} />
       </mesh>
 
+      {/* 手臂 */}
+      <mesh position={[-0.55, 0.5, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
+        <capsuleGeometry args={[0.08, 0.6, 4, 16]} />
+        <meshStandardMaterial color="#f5d0c5" roughness={0.5} />
+      </mesh>
+      <mesh position={[0.55, 0.5, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
+        <capsuleGeometry args={[0.08, 0.6, 4, 16]} />
+        <meshStandardMaterial color="#f5d0c5" roughness={0.5} />
+      </mesh>
+
       {/* 腿部 */}
-      <mesh position={[-0.2, -0.3, 0]}>
+      <mesh position={[-0.15, -0.6, 0]} castShadow>
         <capsuleGeometry args={[0.12, 0.8, 4, 16]} />
         <meshStandardMaterial color="#f5d0c5" roughness={0.5} />
       </mesh>
-      <mesh position={[0.2, -0.3, 0]}>
+      <mesh position={[0.15, -0.6, 0]} castShadow>
         <capsuleGeometry args={[0.12, 0.8, 4, 16]} />
         <meshStandardMaterial color="#f5d0c5" roughness={0.5} />
       </mesh>
@@ -238,11 +313,49 @@ const HumanBody = ({
 };
 
 /**
+ * GLTF精细人体模型（未来扩展）
+ * 使用方法：
+ * 1. 将精细模型文件放入 public/models/human_body.glb
+ * 2. 模型需要包含骨骼动画和压疮部位的命名节点
+ * 3. 取消下方注释并实现具体逻辑
+ */
+// const HumanBodyGLTF = (props: BodyModel3DProps) => {
+//   const { scene, nodes } = useGLTF(HUMAN_MODEL_CONFIG.availableModels.gltf.path!);
+//   
+//   // 根据bodyParts更新模型材质
+//   // 遍历nodes找到对应的身体部位节点
+//   // 应用伤害颜色和发光效果
+//   
+//   return (
+//     <group scale={HUMAN_MODEL_CONFIG.scale} position={HUMAN_MODEL_CONFIG.offset}>
+//       <primitive object={scene} />
+//     </group>
+//   );
+// };
+
+/**
+ * 人体模型容器 - 根据配置选择渲染方式
+ */
+const HumanBody = (props: BodyModel3DProps) => {
+  // 根据配置选择模型类型
+  const modelType = HUMAN_MODEL_CONFIG.currentModel;
+
+  // 未来可根据 modelType 切换不同的模型组件
+  // if (modelType === 'gltf') {
+  //   return (
+  //     <Suspense fallback={<Html center>加载模型中...</Html>}>
+  //       <HumanBodyGLTF {...props} />
+  //     </Suspense>
+  //   );
+  // }
+
+  return <HumanBodyPrimitive {...props} />;
+};
+
+/**
  * 场景组件
  */
 const Scene = (props: BodyModel3DProps) => {
-  const { camera } = useThree();
-
   return (
     <>
       {/* 环境光 */}
@@ -269,30 +382,16 @@ const Scene = (props: BodyModel3DProps) => {
         />
       )}
 
-      {/* 网格 */}
-      {DEFAULT_SCENE_CONFIG.grid && (
-        <Grid
-          position={[0, -0.8, 0]}
-          args={[DEFAULT_SCENE_CONFIG.grid.size, DEFAULT_SCENE_CONFIG.grid.size]}
-          cellSize={DEFAULT_SCENE_CONFIG.grid.size / DEFAULT_SCENE_CONFIG.grid.divisions}
-          cellThickness={1}
-          cellColor={DEFAULT_SCENE_CONFIG.grid.color}
-          sectionSize={DEFAULT_SCENE_CONFIG.grid.size / 4}
-          sectionThickness={1.5}
-          sectionColor="#94a3b8"
-          fadeDistance={25}
-          fadeStrength={1}
-          infiniteGrid
-        />
-      )}
+      {/* 床垫 */}
+      <Mattress />
 
       {/* 人体模型 */}
       <HumanBody {...props} />
 
       {/* 阴影 */}
       <ContactShadows
-        position={[0, -0.8, 0]}
-        opacity={0.4}
+        position={[0, -0.25, 0]}
+        opacity={0.3}
         scale={10}
         blur={2}
         far={4}
@@ -308,7 +407,7 @@ const Scene = (props: BodyModel3DProps) => {
         enableRotate={true}
         minDistance={2}
         maxDistance={10}
-        target={[0, 0.5, 0]}
+        target={[0, 0, 0]}
         autoRotate={props.autoRotate}
         autoRotateSpeed={1}
       />
@@ -324,7 +423,8 @@ export const BodyModel3D = (props: BodyModel3DProps) => {
     <Canvas
       style={{ width: '100%', height: '100%', background: '#f8fafc' }}
       camera={{
-        position: [0, 1.5, 4],
+        // 调整相机位置以观察躺卧姿态
+        position: [0, 2, 3],
         fov: 50,
         near: 0.1,
         far: 100,

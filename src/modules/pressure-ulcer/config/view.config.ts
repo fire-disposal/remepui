@@ -95,38 +95,51 @@ export const DEFAULT_SCENE_CONFIG: Scene3DConfig = {
 /**
  * 身体部位 3D 配置
  * 定义各部位在 3D 空间中的位置和大小
+ * 
+ * 坐标系说明（躺卧姿态）：
+ * - X轴：左右方向（负为左，正为右）
+ * - Y轴：上下方向（负为下，正为上）
+ * - Z轴：前后方向（负为头，正为脚）
+ * 
+ * 注意：这些位置是相对于人体模型局部坐标系的
+ * 模型会整体旋转为躺卧姿态
  */
 export const BODY_PARTS_3D_CONFIG = {
+  // 骶骨 - 位于躯干下部后方
   sacrum: {
-    position: [0, 0.3, -0.15] as [number, number, number],
+    position: [0, 0.3, 0.2] as [number, number, number],
     rotation: [0, 0, 0] as [number, number, number],
     scale: [0.25, 0.2, 0.15] as [number, number, number],
     geometry: 'capsule',
     color: '#f5d0c5',
   },
+  // 左脚跟
   leftHeel: {
-    position: [-0.15, 0, 0.4] as [number, number, number],
+    position: [-0.15, 0, -0.8] as [number, number, number],
     rotation: [0, 0, 0] as [number, number, number],
     scale: [0.12, 0.1, 0.12] as [number, number, number],
     geometry: 'sphere',
     color: '#f5d0c5',
   },
+  // 右脚跟
   rightHeel: {
-    position: [0.15, 0, 0.4] as [number, number, number],
+    position: [0.15, 0, -0.8] as [number, number, number],
     rotation: [0, 0, 0] as [number, number, number],
     scale: [0.12, 0.1, 0.12] as [number, number, number],
     geometry: 'sphere',
     color: '#f5d0c5',
   },
+  // 左大转子（股骨）
   leftTrochanter: {
-    position: [-0.35, 0.4, 0] as [number, number, number],
+    position: [-0.35, 0.35, 0.1] as [number, number, number],
     rotation: [0, 0, 0] as [number, number, number],
     scale: [0.15, 0.18, 0.15] as [number, number, number],
     geometry: 'capsule',
     color: '#f5d0c5',
   },
+  // 右大转子（股骨）
   rightTrochanter: {
-    position: [0.35, 0.4, 0] as [number, number, number],
+    position: [0.35, 0.35, 0.1] as [number, number, number],
     rotation: [0, 0, 0] as [number, number, number],
     scale: [0.15, 0.18, 0.15] as [number, number, number],
     geometry: 'capsule',
@@ -136,13 +149,56 @@ export const BODY_PARTS_3D_CONFIG = {
 
 /**
  * 姿态旋转配置
+ * 注意：模型默认为站立姿态，需要旋转为躺卧姿态
  */
 export const POSTURE_ROTATIONS = {
-  supine: { x: 0, y: 0, z: 0 },
-  prone: { x: Math.PI, y: 0, z: 0 },
-  lateral_left: { x: 0, y: 0, z: Math.PI / 2 },
-  lateral_right: { x: 0, y: 0, z: -Math.PI / 2 },
-  sitting: { x: -Math.PI / 2, y: 0, z: 0 },
+  supine: { x: -Math.PI / 2, y: 0, z: 0 },      // 仰卧位：绕X轴旋转-90度
+  prone: { x: Math.PI / 2, y: 0, z: 0 },        // 俯卧位：绕X轴旋转90度
+  lateral_left: { x: 0, y: 0, z: Math.PI / 2 }, // 左侧卧位
+  lateral_right: { x: 0, y: 0, z: -Math.PI / 2 }, // 右侧卧位
+  sitting: { x: -Math.PI / 4, y: 0, z: 0 },     // 坐位：半躺
+};
+
+/**
+ * 床垫配置
+ */
+export const MATTRESS_CONFIG = {
+  width: 1.2,
+  height: 0.15,
+  depth: 2.2,
+  position: [0, -0.15, 0] as [number, number, number],
+  color: '#e8f4f8',
+  borderColor: '#b8d4e3',
+  pillowColor: '#f0f7fa',
+  pillowPosition: [0, 0.05, -0.85] as [number, number, number],
+  pillowSize: [0.5, 0.1, 0.3] as [number, number, number],
+};
+
+/**
+ * 人体模型配置（用于未来精细模型替换）
+ */
+export const HUMAN_MODEL_CONFIG = {
+  /** 当前使用的模型类型 */
+  currentModel: 'primitive' as const,
+  /** 可用模型列表 */
+  availableModels: {
+    primitive: {
+      id: 'primitive',
+      name: '基础几何体',
+      description: '使用基础几何体（胶囊、球体）构建的简化人体模型',
+      path: null,
+    },
+    gltf: {
+      id: 'gltf',
+      name: 'GLTF模型',
+      description: '从GLTF/GLB文件加载的精细人体模型',
+      path: '/models/human_body.glb',
+    },
+  },
+  /** 模型缩放 */
+  scale: 1.0,
+  /** 模型偏移 */
+  offset: [0, 0, 0] as [number, number, number],
 };
 
 /**
