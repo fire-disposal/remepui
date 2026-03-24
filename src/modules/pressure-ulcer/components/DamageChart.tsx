@@ -1,20 +1,25 @@
 /**
- * 伤害累积图表组件
- * 使用 ECharts
+ * 伤害累积图表组件 - 优化版
+ * 支持标记参数变化点
  */
 
 import { useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
-import { Paper, Text, Group, ThemeIcon, Box, Stack, Badge } from '@mantine/core';
-import { IconTrendingUp, IconActivity, IconAlertTriangle } from '@tabler/icons-react';
+import { Paper, Text, Group, ThemeIcon, Box, Stack, Badge, Tooltip } from '@mantine/core';
+import { IconTrendingUp, IconActivity, IconAlertTriangle, IconSettings } from '@tabler/icons-react';
 import type { HistoryPoint } from '../types';
 
 interface DamageChartProps {
   history: HistoryPoint[];
   isRunning: boolean;
+  paramChangePoints?: Array<{ time: number; param: string; value: number }>;
 }
 
-export const DamageChart: React.FC<DamageChartProps> = ({ history, isRunning }) => {
+export const DamageChart: React.FC<DamageChartProps> = ({
+  history,
+  isRunning,
+  paramChangePoints = []
+}) => {
   const option = useMemo(() => {
     if (history.length < 2) {
       return null;
@@ -24,11 +29,37 @@ export const DamageChart: React.FC<DamageChartProps> = ({ history, isRunning }) 
     const damages = history.map(p => p.damagePercent);
     const riskScores = history.map(p => p.riskScore);
 
+    // 构建 markLine 数据 - 包含参数变化点
+    const markLines: Array<{
+      xAxis: number;
+      lineStyle?: { color: string; type: string };
+      label?: { formatter: string; position: string; fontSize: number; color: string };
+    }> = [];
+
+    // 添加参数变化标记
+    paramChangePoints.forEach(point => {
+      // 找到最接近的时间点
+      const closestTime = times.reduce((prev, curr) =>
+        Math.abs(curr - point.time) < Math.abs(prev - point.time) ? curr : prev
+      );
+
+      markLines.push({
+        xAxis: closestTime,
+        lineStyle: { color: '#3b82f6', type: 'dashed' },
+        label: {
+          formatter: `${point.param}`,
+          position: 'top',
+          fontSize: 8,
+          color: '#3b82f6',
+        },
+      });
+    });
+
     return {
       grid: {
-        top: 30,
+        top: 40,
         right: 15,
-        bottom: 30,
+        bottom: 40,
         left: 45,
       },
       xAxis: {
@@ -168,8 +199,24 @@ export const DamageChart: React.FC<DamageChartProps> = ({ history, isRunning }) 
                   color: '#ef4444',
                 },
               },
+              ...markLines,
             ],
           },
+          markPoint: paramChangePoints.length > 0 ? {
+            symbol: 'pin',
+            symbolSize: 30,
+            data: paramChangePoints.map(point => ({
+              xAxis: point.time,
+              yAxis: 'max',
+              value: point.param,
+              itemStyle: { color: '#3b82f6' },
+            })),
+            label: {
+              show: true,
+              fontSize: 8,
+              formatter: '{b}',
+            },
+          } : undefined,
         },
         {
           name: '风险系数',
@@ -198,23 +245,34 @@ export const DamageChart: React.FC<DamageChartProps> = ({ history, isRunning }) 
         formatter: (params: unknown) => {
           const dataArray = params as unknown[];
           if (!dataArray || dataArray.length === 0) return '';
-          
-          const damagePoint = dataArray[0] as { name: number; value: number };
+
+          const damagePoint = dataArray[0] as { name: number; value: number; dataIndex: number };
           const riskPoint = dataArray[1] as { name: number; value: number };
-          
+
           if (!damagePoint) return '';
-          
+
           const time = Math.floor(damagePoint.name / 60);
           const seconds = Math.floor(damagePoint.name % 60);
           const timeStr = time > 0 ? `${time}分${seconds}秒` : `${seconds}秒`;
-          
-          return `
+
+          // 查找该时间点的参数变化
+          const paramChange = paramChangePoints.find(p =>
+            Math.abs(p.time - damagePoint.name) < 5
+          );
+
+          let html = `
             <div style="padding: 4px;">
               <div style="font-weight: 600; margin-bottom: 4px;">时间: ${timeStr}</div>
               <div style="color: #ef4444;">● 伤害: ${damagePoint.value.toFixed(1)}%</div>
               ${riskPoint ? `<div style="color: #3b82f6;">● 风险: ${riskPoint.value.toFixed(1)}</div>` : ''}
-            </div>
           `;
+
+          if (paramChange) {
+            html += `<div style="color: #3b82f6; margin-top: 4px; font-size: 10px;">⚙ ${paramChange.param}: ${paramChange.value}</div>`;
+          }
+
+          html += '</div>';
+          return html;
         },
       },
       legend: {
@@ -229,7 +287,7 @@ export const DamageChart: React.FC<DamageChartProps> = ({ history, isRunning }) 
         data: ['伤害累积', '风险系数'],
       },
     };
-  }, [history]);
+  }, [history, paramChangePoints]);
 
   // 获取最新数据
   const latestDamage = history.length > 0 ? history[history.length - 1].damagePercent : 0;
@@ -243,6 +301,13 @@ export const DamageChart: React.FC<DamageChartProps> = ({ history, isRunning }) 
             <IconTrendingUp size={12} />
           </ThemeIcon>
           <Text size="xs" fw={600}>伤害累积曲线</Text>
+          {paramChangePoints.length > 0 && (
+            <Tooltip label="图表中蓝色虚线标记了参数调整时刻">
+              <Badge color="blue" variant="light" size="xs" leftSection={<IconSettings size={10} />}>
+                {paramChangePoints.length} 次调整
+              </Badge>
+            </Tooltip>
+          )}
         </Group>
         {isRunning && (
           <Group gap="xs">
@@ -257,19 +322,19 @@ export const DamageChart: React.FC<DamageChartProps> = ({ history, isRunning }) 
       </Group>
 
       {history.length < 2 ? (
-        <Box h={120} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Box h={140} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Stack align="center" gap="xs">
             <ThemeIcon color="gray" variant="light" size="lg" radius="xl">
               <IconActivity size={18} />
             </ThemeIcon>
             <Text size="xs" c="dimmed">开始仿真后显示数据</Text>
-            <Text size="10px" c="dimmed">曲线将实时更新</Text>
+            <Text size="10px" c="dimmed">曲线将实时更新，参数调整会标记在图表上</Text>
           </Stack>
         </Box>
       ) : (
         <ReactECharts
           option={option!}
-          style={{ height: 140 }}
+          style={{ height: 160 }}
           opts={{ renderer: 'svg' }}
         />
       )}
@@ -289,8 +354,14 @@ export const DamageChart: React.FC<DamageChartProps> = ({ history, isRunning }) 
             <div style={{ width: 16, height: 3, backgroundColor: '#ef4444', borderRadius: 2 }} />
             <Text size="9px" c="dimmed">危险</Text>
           </Group>
+          {paramChangePoints.length > 0 && (
+            <Group gap={4}>
+              <div style={{ width: 16, height: 3, background: 'repeating-linear-gradient(90deg, #3b82f6, #3b82f6 3px, transparent 3px, transparent 6px)' }} />
+              <Text size="9px" c="dimmed">参数调整</Text>
+            </Group>
+          )}
         </Group>
-        
+
         {history.length > 0 && (
           <Group gap="md">
             <Text size="9px" c="dimmed">

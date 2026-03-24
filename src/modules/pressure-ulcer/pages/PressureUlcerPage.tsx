@@ -1,19 +1,20 @@
 /**
- * 增强版压力性损伤仿真教学页面
- * 使用增强版仿真引擎和高级可视化
+ * 增强版压力性损伤仿真教学页面 - 优化版
+ * 支持实时参数调整、更清晰的可视化
  */
 
 import { useEffect, useCallback, useState } from 'react';
 import {
   Container, Text, Stack, Paper, Grid, Group, Badge, Button,
   ActionIcon, Tooltip, Box, Tabs, SimpleGrid, ThemeIcon, Switch,
-  Divider, ScrollArea
+  Divider, ScrollArea, Transition, Notification
 } from '@mantine/core';
 import {
   IconActivity, IconVolume, IconVolumeOff, IconInfoCircle,
   IconDatabase, IconTimeline, IconAlertTriangle, IconBook,
   IconBrain, IconChartLine, IconStethoscope, IconRotateClockwise,
-  IconPlayerPlay, IconPlayerPause, IconRefresh
+  IconPlayerPlay, IconPlayerPause, IconRefresh, IconBolt,
+  IconSettings, IconEye, IconEyeOff
 } from '@tabler/icons-react';
 import { useEnhancedSimulation } from '../hooks/useEnhancedSimulation';
 import { useAudioSystem } from '../hooks/useAudioSystem';
@@ -43,6 +44,7 @@ export const PressureUlcerPage = () => {
     endRecovery,
     getRiskFactors,
     getEvents,
+    getParamChangePoints,
     loadRecords,
     deleteRecord,
     formatTime,
@@ -50,8 +52,11 @@ export const PressureUlcerPage = () => {
 
   const [records, setRecords] = useState<SimulationRecord[]>(loadRecords());
   const [events, setEvents] = useState<PressureUlcerEvent[]>([]);
+  const [paramChangePoints, setParamChangePoints] = useState<Array<{ time: number; param: string; value: number }>>([]);
   const [showPrediction, setShowPrediction] = useState(true);
   const [showRecommendations, setShowRecommendations] = useState(true);
+  const [showParamPanel, setShowParamPanel] = useState(true);
+  const [paramChangeNotification, setParamChangeNotification] = useState<{param: string, value: number} | null>(null);
 
   const {
     enabled: audioEnabled,
@@ -84,8 +89,32 @@ export const PressureUlcerPage = () => {
   useEffect(() => {
     if (state.isRunning || state.isFinished) {
       setEvents(getEvents());
+      setParamChangePoints(getParamChangePoints());
     }
-  }, [state.isRunning, state.isFinished, getEvents]);
+  }, [state.isRunning, state.isFinished, getEvents, getParamChangePoints]);
+
+  // 监听参数变化显示通知
+  const handleUpdateParams = useCallback((updates: Partial<typeof params>) => {
+    const paramNames: Record<string, string> = {
+      height: '身高',
+      weight: '体重',
+      temperature: '温度',
+      humidity: '湿度',
+      pressure: '压力',
+      timeSpeed: '仿真速度',
+    };
+
+    const changedKey = Object.keys(updates)[0];
+    if (changedKey && paramNames[changedKey]) {
+      setParamChangeNotification({
+        param: paramNames[changedKey],
+        value: updates[changedKey as keyof typeof params] as number,
+      });
+      setTimeout(() => setParamChangeNotification(null), 2000);
+    }
+
+    updateParams(updates);
+  }, [updateParams]);
 
   const handleReposition = useCallback(() => {
     performReposition();
@@ -114,7 +143,7 @@ export const PressureUlcerPage = () => {
   }, [resetSimulation]);
 
   const riskFactors = getRiskFactors();
-  
+
   const simulationStatus = state.isRecovering
     ? '恢复期'
     : state.isRunning && !state.isPaused
@@ -137,6 +166,30 @@ export const PressureUlcerPage = () => {
 
   return (
     <Box p="md">
+      {/* 参数变化通知 */}
+      <Transition mounted={!!paramChangeNotification} transition="slide-down" duration={200}>
+        {(styles) => (
+          <Notification
+            icon={<IconBolt size={14} />}
+            color="blue"
+            title="参数实时调整"
+            onClose={() => setParamChangeNotification(null)}
+            style={{ ...styles, position: 'fixed', top: 20, right: 20, zIndex: 1000 }}
+          >
+            {paramChangeNotification && (
+              <Text size="xs">
+                {paramChangeNotification.param} 已调整为 {paramChangeNotification.value}
+                {paramChangeNotification.param === '压力' ? 'mmHg' :
+                 paramChangeNotification.param === '温度' ? '°C' :
+                 paramChangeNotification.param === '湿度' ? '%' :
+                 paramChangeNotification.param === '身高' ? 'cm' :
+                 paramChangeNotification.param === '体重' ? 'kg' : ''}
+              </Text>
+            )}
+          </Notification>
+        )}
+      </Transition>
+
       {/* 顶部状态栏 */}
       <Paper shadow="xs" p="sm" radius="md" mb="md" withBorder>
         <Group justify="space-between" wrap="nowrap">
@@ -147,8 +200,8 @@ export const PressureUlcerPage = () => {
             <Box>
               <Text size="sm" fw={600}>压疮风险仿真系统</Text>
               <Text size="xs" c="dimmed">
-                风险: {riskScore.toFixed(1)} | 
-                伤害: {state.damagePercent.toFixed(1)}% | 
+                风险: {riskScore.toFixed(1)} |
+                伤害: {state.damagePercent.toFixed(1)}% |
                 翻身: {state.repositionCount}次 |
                 时间: {formatTime(state.elapsedTime)}
               </Text>
@@ -166,6 +219,18 @@ export const PressureUlcerPage = () => {
               </Badge>
             )}
 
+            {/* 参数面板切换 */}
+            <Tooltip label={showParamPanel ? '隐藏参数面板' : '显示参数面板'}>
+              <ActionIcon
+                variant={showParamPanel ? 'light' : 'subtle'}
+                color="blue"
+                onClick={() => setShowParamPanel(!showParamPanel)}
+                size="sm"
+              >
+                {showParamPanel ? <IconEye size={16} /> : <IconEyeOff size={16} />}
+              </ActionIcon>
+            </Tooltip>
+
             <Tooltip label={audioEnabled ? '关闭声音' : '开启声音'}>
               <ActionIcon
                 variant={audioEnabled ? 'light' : 'subtle'}
@@ -176,85 +241,83 @@ export const PressureUlcerPage = () => {
                 {audioEnabled ? <IconVolume size={16} /> : <IconVolumeOff size={16} />}
               </ActionIcon>
             </Tooltip>
-
-            <Tooltip label="关于本系统">
-              <ActionIcon variant="subtle" size="sm">
-                <IconInfoCircle size={16} />
-              </ActionIcon>
-            </Tooltip>
           </Group>
         </Group>
       </Paper>
 
       {/* 主内容区域 */}
       <Grid gutter="md">
-        {/* 左侧：参数控制面板 */}
-        <Grid.Col span={{ base: 12, md: 3 }}>
-          <Stack gap="md">
-            <Paper shadow="xs" p="sm" radius="md" withBorder>
-              <ParameterPanel
-                params={params}
-                onUpdateParams={updateParams}
-                isRunning={state.isRunning}
-                isPaused={state.isPaused}
-                isFinished={state.isFinished}
-                onStart={handleStart}
-                onPause={handlePause}
-                onResume={handleResume}
-                onFinish={handleFinish}
-                onReset={handleReset}
-              />
-            </Paper>
+        {/* 左侧：参数控制面板 - 可折叠 */}
+        {showParamPanel && (
+          <Grid.Col span={{ base: 12, md: 3 }}>
+            <Stack gap="md">
+              <Paper shadow="xs" p="sm" radius="md" withBorder>
+                <ParameterPanel
+                  params={params}
+                  onUpdateParams={handleUpdateParams}
+                  isRunning={state.isRunning}
+                  isPaused={state.isPaused}
+                  isFinished={state.isFinished}
+                  onStart={handleStart}
+                  onPause={handlePause}
+                  onResume={handleResume}
+                  onFinish={handleFinish}
+                  onReset={handleReset}
+                  currentDamage={state.damagePercent}
+                  riskScore={riskScore}
+                />
+              </Paper>
 
-            {/* 快速控制 */}
-            <Paper shadow="xs" p="sm" radius="md" withBorder>
-              <Text size="xs" fw={600} c="dimmed" mb="sm">快速控制</Text>
-              <Group grow gap="xs">
-                <Button
-                  onClick={handleReposition}
-                  disabled={!state.isRunning || state.isFinished || state.isRecovering}
-                  size="compact-sm"
-                  color="grape"
-                  leftSection={<IconRotateClockwise size={14} />}
-                >
-                  翻身
-                </Button>
-                {state.isRecovering && (
+              {/* 快速控制 */}
+              <Paper shadow="xs" p="sm" radius="md" withBorder>
+                <Text size="xs" fw={600} c="dimmed" mb="sm">快速控制</Text>
+                <Group grow gap="xs">
                   <Button
-                    onClick={endRecovery}
+                    onClick={handleReposition}
+                    disabled={!state.isRunning || state.isFinished || state.isRecovering}
                     size="compact-sm"
-                    variant="light"
-                    color="green"
+                    color="grape"
+                    leftSection={<IconRotateClockwise size={14} />}
                   >
-                    结束恢复
+                    翻身
                   </Button>
-                )}
-              </Group>
-            </Paper>
+                  {state.isRecovering && (
+                    <Button
+                      onClick={endRecovery}
+                      size="compact-sm"
+                      variant="light"
+                      color="green"
+                    >
+                      结束恢复
+                    </Button>
+                  )}
+                </Group>
+              </Paper>
 
-            {/* 显示选项 */}
-            <Paper shadow="xs" p="sm" radius="md" withBorder>
-              <Text size="xs" fw={600} c="dimmed" mb="sm">显示选项</Text>
-              <Stack gap="xs">
-                <Switch
-                  label="显示预测曲线"
-                  checked={showPrediction}
-                  onChange={(e) => setShowPrediction(e.currentTarget.checked)}
-                  size="xs"
-                />
-                <Switch
-                  label="显示智能建议"
-                  checked={showRecommendations}
-                  onChange={(e) => setShowRecommendations(e.currentTarget.checked)}
-                  size="xs"
-                />
-              </Stack>
-            </Paper>
-          </Stack>
-        </Grid.Col>
+              {/* 显示选项 */}
+              <Paper shadow="xs" p="sm" radius="md" withBorder>
+                <Text size="xs" fw={600} c="dimmed" mb="sm">显示选项</Text>
+                <Stack gap="xs">
+                  <Switch
+                    label="显示预测曲线"
+                    checked={showPrediction}
+                    onChange={(e) => setShowPrediction(e.currentTarget.checked)}
+                    size="xs"
+                  />
+                  <Switch
+                    label="显示智能建议"
+                    checked={showRecommendations}
+                    onChange={(e) => setShowRecommendations(e.currentTarget.checked)}
+                    size="xs"
+                  />
+                </Stack>
+              </Paper>
+            </Stack>
+          </Grid.Col>
+        )}
 
         {/* 右侧：仿真显示区域 */}
-        <Grid.Col span={{ base: 12, md: 9 }}>
+        <Grid.Col span={{ base: 12, md: showParamPanel ? 9 : 12 }}>
           <Stack gap="md">
             {/* 状态指示器 */}
             <StatusIndicators
@@ -276,7 +339,14 @@ export const PressureUlcerPage = () => {
                 >
                   <Group justify="space-between">
                     <Text size="sm" fw={600}>人体模型</Text>
-                    <Badge variant="outline" size="xs">5个高发部位</Badge>
+                    <Group gap="xs">
+                      <Badge variant="outline" size="xs">5个高发部位</Badge>
+                      {state.isRunning && (
+                        <Badge color="green" variant="light" size="xs">
+                          实时
+                        </Badge>
+                      )}
+                    </Group>
                   </Group>
                 </Box>
                 <Box h={320} style={{ backgroundColor: 'var(--mantine-color-gray-0)' }}>
@@ -325,7 +395,7 @@ export const PressureUlcerPage = () => {
                   formatTime={formatTime}
                 />
               )}
-              
+
               {showRecommendations && (
                 <SmartRecommendations
                   params={params}
@@ -347,6 +417,7 @@ export const PressureUlcerPage = () => {
               <DamageChart
                 history={state.history}
                 isRunning={state.isRunning && !state.isPaused}
+                paramChangePoints={paramChangePoints}
               />
             </Paper>
 
@@ -355,7 +426,7 @@ export const PressureUlcerPage = () => {
               <Tabs defaultValue="records">
                 <Tabs.List style={{ paddingLeft: 8, paddingRight: 8 }}>
                   <Tabs.Tab value="records" leftSection={<IconDatabase size={14} />}>
-                    仿真记录
+                    仿真记录 ({records.length})
                   </Tabs.Tab>
                   <Tabs.Tab value="timeline" leftSection={<IconTimeline size={14} />}>
                     事件时间轴

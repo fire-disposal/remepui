@@ -107,6 +107,7 @@ export const useEnhancedSimulation = () => {
   const eventsRef = useRef<PressureUlcerEvent[]>([]);
   const currentRecordRef = useRef<SimulationRecord | null>(null);
   const alertTriggeredRef = useRef({ warning: false, danger: false });
+  const paramChangePointsRef = useRef<Array<{ time: number; param: string; value: number }>>([]);
 
   // 计算派生值
   const riskScore = useMemo(() => calculateRiskScore(params), [params]);
@@ -148,9 +149,18 @@ export const useEnhancedSimulation = () => {
 
   // 参数更新（支持实时调整）
   const updateParams = useCallback((updates: Partial<SimulationParams>) => {
+    const paramNames: Record<string, string> = {
+      height: '身高',
+      weight: '体重',
+      temperature: '温度',
+      humidity: '湿度',
+      pressure: '压力',
+      timeSpeed: '速度',
+    };
+
     setParams(prev => {
       const newParams = { ...prev, ...updates };
-      
+
       // 自动计算 BMI
       if (updates.height !== undefined || updates.weight !== undefined) {
         const heightInM = newParams.height / 100;
@@ -158,11 +168,11 @@ export const useEnhancedSimulation = () => {
           (newParams.weight / (heightInM * heightInM)).toFixed(1)
         );
       }
-      
+
       return newParams;
     });
-    
-    // 记录参数变化事件
+
+    // 记录参数变化事件和点
     if (Object.keys(updates).length > 0) {
       const event: PressureUlcerEvent = {
         id: generateId(),
@@ -174,6 +184,17 @@ export const useEnhancedSimulation = () => {
         paramChanges: updates,
       };
       eventsRef.current.push(event);
+
+      // 记录参数变化点用于图表显示
+      Object.entries(updates).forEach(([key, value]) => {
+        if (typeof value === 'number') {
+          paramChangePointsRef.current.push({
+            time: state.elapsedTime,
+            param: paramNames[key] || key,
+            value,
+          });
+        }
+      });
     }
   }, [state.elapsedTime, state.damagePercent]);
 
@@ -357,6 +378,7 @@ export const useEnhancedSimulation = () => {
     alertTriggeredRef.current = { warning: false, danger: false };
     currentRecordRef.current = null;
     eventsRef.current = [];
+    paramChangePointsRef.current = [];
 
     setState(createInitialState());
     setAlertState({ level: 'none', message: '' });
@@ -412,6 +434,9 @@ export const useEnhancedSimulation = () => {
 
   // 获取事件列表
   const getEvents = useCallback(() => [...eventsRef.current], []);
+
+  // 获取参数变化点
+  const getParamChangePoints = useCallback(() => [...paramChangePointsRef.current], []);
 
   // 获取风险因素
   const getRiskFactors = useCallback((): RiskFactors => {
@@ -507,6 +532,7 @@ export const useEnhancedSimulation = () => {
     // 查询
     getRiskFactors,
     getEvents,
+    getParamChangePoints,
     loadRecords: loadRecordsCallback,
     deleteRecord,
     formatTime,
