@@ -25,7 +25,7 @@ function getEnvVar(key: string, defaultValue: string): string {
  * 环境配置实例
  */
 export const env: EnvConfig = {
-  apiBaseUrl: getEnvVar("VITE_API_BASE_URL", "http://localhost:8000/api/v1"),
+  apiBaseUrl: getEnvVar("VITE_API_BASE_URL", "http://localhost:18000/api"),
   appTitle: getEnvVar("VITE_APP_TITLE", "Remipedia IoT Health Platform"),
   isDev: import.meta.env.DEV,
   isProd: import.meta.env.PROD,

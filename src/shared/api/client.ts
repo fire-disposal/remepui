@@ -8,9 +8,9 @@ import { logger } from "../logger";
 import { useAuthStore } from "../store/auth";
 import { getRefreshToken, setRefreshToken, clearRefreshToken } from "./auth";
 
-// 后端 API 地址 - remipedia 服务运行在 8000 端口
+// 后端 API 地址 - remipedia 服务运行在 18000 端口
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:18000/api";
 
 // 标记是否正在刷新 token
 let isRefreshing = false;
