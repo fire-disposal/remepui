@@ -295,81 +295,88 @@ export const DamageChart: React.FC<DamageChartProps> = ({
 
   return (
     <Box>
-      <Group justify="space-between" mb="xs" px="sm" pt="sm">
-        <Group gap="xs">
-          <ThemeIcon color="blue" variant="light" size="xs">
-            <IconTrendingUp size={12} />
+      <Group justify="space-between" mb="sm" px="md" pt="md">
+        <Group gap="sm">
+          <ThemeIcon color="blue" variant="light" size="md" radius="md">
+            <IconTrendingUp size={18} />
           </ThemeIcon>
-          <Text size="xs" fw={600}>伤害累积曲线</Text>
+          <Text size="sm" fw={600}>伤害累积曲线</Text>
           {paramChangePoints.length > 0 && (
             <Tooltip label="图表中蓝色虚线标记了参数调整时刻">
-              <Badge color="blue" variant="light" size="xs" leftSection={<IconSettings size={10} />}>
+              <Badge color="blue" variant="light" size="sm" leftSection={<IconSettings size={12} />}>
                 {paramChangePoints.length} 次调整
               </Badge>
             </Tooltip>
           )}
         </Group>
         {isRunning && (
-          <Group gap="xs">
-            <Badge color="green" variant="light" size="xs">
+          <Group gap="sm">
+            <Badge color="green" variant="light" size="sm">
               实时更新
             </Badge>
-            <ThemeIcon color="green" variant="light" size="xs">
-              <IconActivity size={12} style={{ animation: 'pulse 1s infinite' }} />
+            <ThemeIcon color="green" variant="light" size="md" radius="md">
+              <IconActivity size={18} style={{ animation: 'pulse 1.5s infinite' }} />
             </ThemeIcon>
           </Group>
         )}
       </Group>
 
       {history.length < 2 ? (
-        <Box h={140} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Stack align="center" gap="xs">
-            <ThemeIcon color="gray" variant="light" size="lg" radius="xl">
-              <IconActivity size={18} />
+        <Box h={180} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Stack align="center" gap="sm">
+            <ThemeIcon color="gray" variant="light" size="xl" radius="xl">
+              <IconActivity size={28} />
             </ThemeIcon>
-            <Text size="xs" c="dimmed">开始仿真后显示数据</Text>
-            <Text size="10px" c="dimmed">曲线将实时更新，参数调整会标记在图表上</Text>
+            <Text size="sm" c="dimmed">开始仿真后显示数据</Text>
+            <Text size="xs" c="dimmed">曲线将实时更新，参数调整会标记在图表上</Text>
           </Stack>
         </Box>
       ) : (
         <ReactECharts
           option={option!}
-          style={{ height: 160 }}
+          style={{ height: 180 }}
           opts={{ renderer: 'svg' }}
         />
       )}
 
       {/* 图例和当前值 */}
-      <Group justify="space-between" px="sm" pb="sm">
-        <Group gap="md">
-          <Group gap={4}>
-            <div style={{ width: 16, height: 3, backgroundColor: '#22c55e', borderRadius: 2 }} />
-            <Text size="9px" c="dimmed">安全</Text>
+      <Paper mx="md" mb="md" p="xs" radius="xs" bg="gray.0" withBorder>
+        <Group justify="space-between" align="center">
+          <Group gap="lg">
+            <Group gap={6}>
+              <div style={{ width: 20, height: 4, backgroundColor: '#22c55e', borderRadius: 2 }} />
+              <Text size="xs" c="dimmed">安全</Text>
+            </Group>
+            <Group gap={6}>
+              <div style={{ width: 20, height: 4, backgroundColor: '#f97316', borderRadius: 2 }} />
+              <Text size="xs" c="dimmed">警告</Text>
+            </Group>
+            <Group gap={6}>
+              <div style={{ width: 20, height: 4, backgroundColor: '#ef4444', borderRadius: 2 }} />
+              <Text size="xs" c="dimmed">危险</Text>
+            </Group>
+            {paramChangePoints.length > 0 && (
+              <Group gap={6}>
+                <div style={{ width: 20, height: 4, background: 'repeating-linear-gradient(90deg, #3b82f6, #3b82f6 3px, transparent 3px, transparent 6px)' }} />
+                <Text size="xs" c="dimmed">参数调整</Text>
+              </Group>
+            )}
           </Group>
-          <Group gap={4}>
-            <div style={{ width: 16, height: 3, backgroundColor: '#f97316', borderRadius: 2 }} />
-            <Text size="9px" c="dimmed">警告</Text>
-          </Group>
-          <Group gap={4}>
-            <div style={{ width: 16, height: 3, backgroundColor: '#ef4444', borderRadius: 2 }} />
-            <Text size="9px" c="dimmed">危险</Text>
-          </Group>
-          {paramChangePoints.length > 0 && (
-            <Group gap={4}>
-              <div style={{ width: 16, height: 3, background: 'repeating-linear-gradient(90deg, #3b82f6, #3b82f6 3px, transparent 3px, transparent 6px)' }} />
-              <Text size="9px" c="dimmed">参数调整</Text>
+
+          {history.length > 0 && (
+            <Group gap="sm">
+              <Text size="xs" c="dimmed">当前伤害:</Text>
+              <Badge
+                size="sm"
+                color={latestDamage >= 70 ? 'red' : latestDamage >= 30 ? 'orange' : 'green'}
+                variant="light"
+              >
+                {latestDamage.toFixed(1)}%
+              </Badge>
             </Group>
           )}
         </Group>
-
-        {history.length > 0 && (
-          <Group gap="md">
-            <Text size="9px" c="dimmed">
-              当前: <Text span c={latestDamage >= 70 ? 'red' : latestDamage >= 30 ? 'orange' : 'green'} fw={600}>{latestDamage.toFixed(1)}%</Text>
-            </Text>
-          </Group>
-        )}
-      </Group>
+      </Paper>
     </Box>
   );
 };

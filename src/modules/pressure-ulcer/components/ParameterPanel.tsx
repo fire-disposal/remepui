@@ -5,15 +5,14 @@
 
 import {
   Paper, Slider, NumberInput, Select, Button, Badge, Group, Text, Stack, Box,
-  Collapse, ActionIcon, Tooltip, Divider, ThemeIcon, SegmentedControl, UnstyledButton,
-  Transition, Notification
+  Collapse, ActionIcon, Tooltip, Divider, ThemeIcon, SegmentedControl, UnstyledButton
 } from '@mantine/core';
 import {
-  IconPlayerPlay, IconPlayerPause, IconPlayerStop, IconUser, IconTemperature,
-  IconDroplet, IconGauge, IconClock, IconDeviceFloppy, IconChevronDown, IconChevronUp,
-  IconRefresh, IconInfoCircle, IconBolt, IconAlertCircle, IconCheck
+  IconPlayerPlay, IconPlayerPause, IconUser, IconTemperature,
+  IconGauge, IconClock, IconDeviceFloppy, IconChevronDown, IconChevronUp,
+  IconRefresh, IconInfoCircle, IconBolt, IconAlertCircle
 } from '@tabler/icons-react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { SimulationParams } from '../types';
 import { PRESET_SCENARIOS } from '../config/presets.config';
 
@@ -47,9 +46,6 @@ export const ParameterPanel = ({
   riskScore = 0,
 }: ParameterPanelProps) => {
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [paramChanges, setParamChanges] = useState<Partial<SimulationParams>>({});
-  const [showChangeNotification, setShowChangeNotification] = useState(false);
-  const [lastChangedParam, setLastChangedParam] = useState<string>('');
 
   const getBMIColor = (bmi: number): string => {
     if (bmi < 18.5) return 'yellow';
@@ -98,19 +94,6 @@ export const ParameterPanel = ({
     }
 
     onUpdateParams(updates);
-
-    // 显示变化提示
-    const paramNames: Record<string, string> = {
-      height: '身高',
-      weight: '体重',
-      temperature: '温度',
-      humidity: '湿度',
-      pressure: '压力',
-      timeSpeed: '仿真速度',
-    };
-    setLastChangedParam(paramNames[key] || key);
-    setShowChangeNotification(true);
-    setTimeout(() => setShowChangeNotification(false), 2000);
   };
 
   const pressureStatus = getPressureStatus(params.pressure);
@@ -150,22 +133,6 @@ export const ParameterPanel = ({
           </Group>
         </Paper>
       )}
-
-      {/* 参数变化通知 */}
-      <Transition mounted={showChangeNotification} transition="slide-down" duration={200}>
-        {(styles) => (
-          <Notification
-            icon={<IconCheck size={14} />}
-            color="green"
-            title="参数已更新"
-            onClose={() => setShowChangeNotification(false)}
-            style={styles}
-            styles={{ root: { marginBottom: 8 } }}
-          >
-            <Text size="xs">{lastChangedParam} 已调整，仿真参数实时更新</Text>
-          </Notification>
-        )}
-      </Transition>
 
       {/* 预设场景 */}
       <Box>
@@ -243,115 +210,129 @@ export const ParameterPanel = ({
       </Box>
 
       {/* 环境参数 */}
-      <Box>
-        <Group justify="space-between" mb={4}>
-          <Group gap={4}>
-            <IconTemperature size={12} />
-            <Text size="xs" fw={500}>环境参数</Text>
-          </Group>
+      <Paper p="xs" radius="xs" bg="gray.0" withBorder>
+        <Group gap={4} mb="xs">
+          <IconTemperature size={14} />
+          <Text size="xs" fw={600}>环境参数</Text>
         </Group>
 
-        {/* 环境温度 */}
-        <Box mb="xs">
-          <Group justify="space-between" mb={2}>
-            <Text size="10px" c="dimmed">环境温度</Text>
-            <Group gap={4}>
-              <Text size="xs" fw={500}>{params.temperature}°C</Text>
-              <Badge color={tempStatus.color} variant="light" size="xs">
-                {tempStatus.label}
-              </Badge>
+        <Stack gap="sm">
+          {/* 环境温度 */}
+          <Box>
+            <Group justify="space-between" mb={4}>
+              <Text size="11px" c="dimmed">环境温度</Text>
+              <Group gap={6}>
+                <Text size="sm" fw={600}>{params.temperature}°C</Text>
+                <Badge color={tempStatus.color} variant="light" size="xs">
+                  {tempStatus.label}
+                </Badge>
+              </Group>
             </Group>
-          </Group>
-          <Slider
-            value={params.temperature}
-            onChange={(value) => updateParam('temperature', value)}
-            min={15}
-            max={35}
-            step={1}
-            size="xs"
-            color={tempStatus.color}
-            marks={[
-              { value: 18, label: '18°' },
-              { value: 25, label: '25°' },
-            ]}
-          />
-        </Box>
+            <Slider
+              value={params.temperature}
+              onChange={(value) => updateParam('temperature', value)}
+              min={15}
+              max={35}
+              step={1}
+              size="xs"
+              color={tempStatus.color}
+              marks={[
+                { value: 18, label: '18°' },
+                { value: 25, label: '25°' },
+              ]}
+            />
+          </Box>
 
-        {/* 环境湿度 */}
-        <Box>
-          <Group justify="space-between" mb={2}>
-            <Text size="10px" c="dimmed">环境湿度</Text>
-            <Group gap={4}>
-              <Text size="xs" fw={500}>{params.humidity}%</Text>
-              <Badge color={humidityStatus.color} variant="light" size="xs">
-                {humidityStatus.label}
-              </Badge>
+          <Divider />
+
+          {/* 环境湿度 */}
+          <Box>
+            <Group justify="space-between" mb={4}>
+              <Text size="11px" c="dimmed">环境湿度</Text>
+              <Group gap={6}>
+                <Text size="sm" fw={600}>{params.humidity}%</Text>
+                <Badge color={humidityStatus.color} variant="light" size="xs">
+                  {humidityStatus.label}
+                </Badge>
+              </Group>
             </Group>
-          </Group>
-          <Slider
-            value={params.humidity}
-            onChange={(value) => updateParam('humidity', value)}
-            min={20}
-            max={90}
-            step={1}
-            size="xs"
-            color={humidityStatus.color}
-            marks={[
-              { value: 30, label: '30%' },
-              { value: 70, label: '70%' },
-            ]}
-          />
-        </Box>
-      </Box>
+            <Slider
+              value={params.humidity}
+              onChange={(value) => updateParam('humidity', value)}
+              min={20}
+              max={90}
+              step={1}
+              size="xs"
+              color={humidityStatus.color}
+              marks={[
+                { value: 30, label: '30%' },
+                { value: 70, label: '70%' },
+              ]}
+            />
+          </Box>
+        </Stack>
+      </Paper>
 
       {/* 界面压力 */}
-      <Box>
-        <Group justify="space-between" mb={4}>
+      <Paper p="xs" radius="xs" bg="gray.0" withBorder>
+        <Group justify="space-between" mb="xs">
           <Group gap={4}>
-            <IconGauge size={12} />
-            <Text size="xs" fw={500}>界面压力</Text>
+            <IconGauge size={14} />
+            <Text size="xs" fw={600}>界面压力</Text>
           </Group>
           <Tooltip label="毛细血管闭合压约32mmHg" position="left" withinPortal>
             <IconInfoCircle size={12} style={{ cursor: 'help' }} color="var(--mantine-color-gray-5)" />
           </Tooltip>
         </Group>
 
-        <Group justify="space-between" mb={2}>
-          <Group gap="xs">
-            <Text size="xs" c="dimmed">{params.pressure} mmHg</Text>
-            {damageImpact && (
-              <Badge color={damageImpact.color} variant="filled" size="xs">
-                {damageImpact.text}
+        <Stack gap="xs">
+          {/* 压力数值和状态 */}
+          <Group justify="space-between" align="center">
+            <Group gap={8}>
+              <Text size="lg" fw={700} c={pressureStatus.color}>
+                {params.pressure}
+              </Text>
+              <Text size="xs" c="dimmed">mmHg</Text>
+            </Group>
+            <Group gap={6}>
+              {damageImpact && (
+                <Badge color={damageImpact.color} variant="filled" size="xs">
+                  {damageImpact.text}
+                </Badge>
+              )}
+              <Badge color={pressureStatus.color} variant="light" size="xs">
+                {pressureStatus.label}风险
               </Badge>
-            )}
+            </Group>
           </Group>
-          <Badge color={pressureStatus.color} variant="light" size="xs">
-            {pressureStatus.label}风险
-          </Badge>
-        </Group>
 
-        <Slider
-          value={params.pressure}
-          onChange={(value) => updateParam('pressure', value)}
-          min={0}
-          max={300}
-          step={1}
-          size="xs"
-          color={pressureStatus.color}
-          marks={[
-            { value: 32, label: '32' },
-            { value: 100, label: '100' },
-            { value: 200, label: '200' },
-          ]}
-        />
+          <Slider
+            value={params.pressure}
+            onChange={(value) => updateParam('pressure', value)}
+            min={0}
+            max={300}
+            step={1}
+            size="xs"
+            color={pressureStatus.color}
+            marks={[
+              { value: 32, label: '32' },
+              { value: 100, label: '100' },
+              { value: 200, label: '200' },
+            ]}
+          />
 
-        {/* 压力影响提示 */}
-        {isRunning && (
-          <Text size="10px" c="dimmed" mt={4}>
-            当前压力 {params.pressure}mmHg，伤害累积速度: {params.pressure > 32 ? '↑ 加快' : '→ 正常'}
-          </Text>
-        )}
-      </Box>
+          {/* 压力影响提示 */}
+          {isRunning && (
+            <Paper p={6} radius="xs" bg={params.pressure > 32 ? 'red.0' : 'green.0'}>
+              <Group gap="xs">
+                <Text size="11px" c={params.pressure > 32 ? 'red.7' : 'green.7'}>
+                  伤害累积: {params.pressure > 32 ? '↑ 加快' : '→ 正常'}
+                </Text>
+              </Group>
+            </Paper>
+          )}
+        </Stack>
+      </Paper>
 
       {/* 高级设置 */}
       <Box>
