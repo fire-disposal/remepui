@@ -25,12 +25,28 @@ const customGray: MantineColorsTuple = [
   "#212529", // 9 - 最深
 ];
 
+// 自定义暗色色阶，提升 dark 模式下 dimmed 文本可读性
+const customDark: MantineColorsTuple = [
+  "#d5dae3",
+  "#c2c9d6",
+  "#adb7c8",
+  "#8f9ab0",
+  "#727f97",
+  "#5b677d",
+  "#444f63",
+  "#313a4d",
+  "#242c3d",
+  "#171d2a",
+];
+
 /**
  * 创建 Mantine 主题
  */
 function createAppTheme(primaryColor: string) {
   return createTheme({
     primaryColor,
+    autoContrast: true,
+    luminanceThreshold: 0.25,
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
     headings: {
       fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
@@ -38,6 +54,7 @@ function createAppTheme(primaryColor: string) {
     defaultRadius: "md",
     colors: {
       gray: customGray,
+      dark: customDark,
     },
   });
 }
