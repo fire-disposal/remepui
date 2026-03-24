@@ -1,11 +1,19 @@
 /**
- * 参数控制面板组件
- * 使用 Mantine UI
+ * 参数控制面板组件 - 优化版
+ * 支持仿真运行时实时调整参数
  */
 
-import { Paper, Slider, NumberInput, Select, Button, Badge, Group, Text, Stack, Box, Collapse, ActionIcon, Tooltip, Divider, ThemeIcon, SegmentedControl, UnstyledButton } from '@mantine/core';
-import { IconPlayerPlay, IconPlayerPause, IconPlayerStop, IconUser, IconTemperature, IconDroplet, IconGauge, IconClock, IconDeviceFloppy, IconChevronDown, IconChevronUp, IconRefresh, IconInfoCircle } from '@tabler/icons-react';
-import { useState } from 'react';
+import {
+  Paper, Slider, NumberInput, Select, Button, Badge, Group, Text, Stack, Box,
+  Collapse, ActionIcon, Tooltip, Divider, ThemeIcon, SegmentedControl, UnstyledButton,
+  Transition, Notification
+} from '@mantine/core';
+import {
+  IconPlayerPlay, IconPlayerPause, IconPlayerStop, IconUser, IconTemperature,
+  IconDroplet, IconGauge, IconClock, IconDeviceFloppy, IconChevronDown, IconChevronUp,
+  IconRefresh, IconInfoCircle, IconBolt, IconAlertCircle, IconCheck
+} from '@tabler/icons-react';
+import { useState, useEffect } from 'react';
 import type { SimulationParams } from '../types';
 import { PRESET_SCENARIOS } from '../config/presets.config';
 
@@ -20,6 +28,8 @@ interface ParameterPanelProps {
   onResume: () => void;
   onFinish: () => void;
   onReset: () => void;
+  currentDamage?: number;
+  riskScore?: number;
 }
 
 export const ParameterPanel = ({
@@ -33,8 +43,13 @@ export const ParameterPanel = ({
   onResume,
   onFinish,
   onReset,
+  currentDamage = 0,
+  riskScore = 0,
 }: ParameterPanelProps) => {
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [paramChanges, setParamChanges] = useState<Partial<SimulationParams>>({});
+  const [showChangeNotification, setShowChangeNotification] = useState(false);
+  const [lastChangedParam, setLastChangedParam] = useState<string>('');
 
   const getBMIColor = (bmi: number): string => {
     if (bmi < 18.5) return 'yellow';
@@ -58,19 +73,20 @@ export const ParameterPanel = ({
     return { color: 'red', label: '危险' };
   };
 
-  const getTempStatus = (temp: number): { color: string } => {
-    if (temp < 18) return { color: 'blue' };
-    if (temp <= 25) return { color: 'green' };
-    if (temp < 30) return { color: 'orange' };
-    return { color: 'red' };
+  const getTempStatus = (temp: number): { color: string; label: string } => {
+    if (temp < 18) return { color: 'blue', label: '偏冷' };
+    if (temp <= 25) return { color: 'green', label: '适宜' };
+    if (temp < 30) return { color: 'orange', label: '偏热' };
+    return { color: 'red', label: '过热' };
   };
 
-  const getHumidityStatus = (humidity: number): { color: string } => {
-    if (humidity < 30) return { color: 'yellow' };
-    if (humidity <= 70) return { color: 'green' };
-    return { color: 'orange' };
+  const getHumidityStatus = (humidity: number): { color: string; label: string } => {
+    if (humidity < 30) return { color: 'yellow', label: '干燥' };
+    if (humidity <= 70) return { color: 'green', label: '适宜' };
+    return { color: 'orange', label: '潮湿' };
   };
 
+  // 实时更新参数，不限制运行状态
   const updateParam = (key: keyof SimulationParams, value: number) => {
     const updates: Partial<SimulationParams> = { [key]: value };
 
@@ -82,14 +98,75 @@ export const ParameterPanel = ({
     }
 
     onUpdateParams(updates);
+
+    // 显示变化提示
+    const paramNames: Record<string, string> = {
+      height: '身高',
+      weight: '体重',
+      temperature: '温度',
+      humidity: '湿度',
+      pressure: '压力',
+      timeSpeed: '仿真速度',
+    };
+    setLastChangedParam(paramNames[key] || key);
+    setShowChangeNotification(true);
+    setTimeout(() => setShowChangeNotification(false), 2000);
   };
 
   const pressureStatus = getPressureStatus(params.pressure);
   const tempStatus = getTempStatus(params.temperature);
   const humidityStatus = getHumidityStatus(params.humidity);
 
+  // 计算参数变化对伤害的预估影响
+  const getDamageImpact = (): { text: string; color: string } | null => {
+    if (!isRunning) return null;
+
+    // 基于当前压力与临界压力(32mmHg)的关系估算
+    const pressureRatio = params.pressure / 32;
+    if (pressureRatio > 2) {
+      return { text: '高压风险↑', color: 'red' };
+    } else if (pressureRatio > 1.5) {
+      return { text: '压力偏高', color: 'orange' };
+    } else if (pressureRatio < 0.8) {
+      return { text: '压力安全', color: 'green' };
+    }
+    return null;
+  };
+
+  const damageImpact = getDamageImpact();
+
   return (
     <Stack gap="xs">
+      {/* 实时调整提示 */}
+      {isRunning && (
+        <Paper p="xs" radius="xs" bg="blue.0" withBorder>
+          <Group gap="xs">
+            <ThemeIcon color="blue" variant="light" size="sm">
+              <IconBolt size={14} />
+            </ThemeIcon>
+            <Text size="xs" c="blue.8">
+              仿真运行中，参数实时生效
+            </Text>
+          </Group>
+        </Paper>
+      )}
+
+      {/* 参数变化通知 */}
+      <Transition mounted={showChangeNotification} transition="slide-down" duration={200}>
+        {(styles) => (
+          <Notification
+            icon={<IconCheck size={14} />}
+            color="green"
+            title="参数已更新"
+            onClose={() => setShowChangeNotification(false)}
+            style={styles}
+            styles={{ root: { marginBottom: 8 } }}
+          >
+            <Text size="xs">{lastChangedParam} 已调整，仿真参数实时更新</Text>
+          </Notification>
+        )}
+      </Transition>
+
       {/* 预设场景 */}
       <Box>
         <Text size="xs" fw={500} c="dimmed" mb={4}>预设场景</Text>
@@ -116,7 +193,7 @@ export const ParameterPanel = ({
 
       <Divider my={4} />
 
-      {/* 身高体重 */}
+      {/* 身体参数 */}
       <Box>
         <Group justify="space-between" mb={4}>
           <Group gap={4}>
@@ -134,7 +211,7 @@ export const ParameterPanel = ({
               min={140}
               max={200}
               size="xs"
-              disabled={isRunning && !isPaused}
+              // 移除 disabled 限制，允许实时调整
             />
           </Box>
           <Box>
@@ -145,7 +222,6 @@ export const ParameterPanel = ({
               min={40}
               max={150}
               size="xs"
-              disabled={isRunning && !isPaused}
             />
           </Box>
         </Group>
@@ -182,7 +258,7 @@ export const ParameterPanel = ({
             <Group gap={4}>
               <Text size="xs" fw={500}>{params.temperature}°C</Text>
               <Badge color={tempStatus.color} variant="light" size="xs">
-                {params.temperature < 18 ? '偏低' : params.temperature > 28 ? '偏高' : '适宜'}
+                {tempStatus.label}
               </Badge>
             </Group>
           </Group>
@@ -194,7 +270,10 @@ export const ParameterPanel = ({
             step={1}
             size="xs"
             color={tempStatus.color}
-            disabled={isRunning && !isPaused}
+            marks={[
+              { value: 18, label: '18°' },
+              { value: 25, label: '25°' },
+            ]}
           />
         </Box>
 
@@ -205,7 +284,7 @@ export const ParameterPanel = ({
             <Group gap={4}>
               <Text size="xs" fw={500}>{params.humidity}%</Text>
               <Badge color={humidityStatus.color} variant="light" size="xs">
-                {params.humidity < 30 ? '干燥' : params.humidity > 70 ? '潮湿' : '适宜'}
+                {humidityStatus.label}
               </Badge>
             </Group>
           </Group>
@@ -217,7 +296,10 @@ export const ParameterPanel = ({
             step={1}
             size="xs"
             color={humidityStatus.color}
-            disabled={isRunning && !isPaused}
+            marks={[
+              { value: 30, label: '30%' },
+              { value: 70, label: '70%' },
+            ]}
           />
         </Box>
       </Box>
@@ -235,7 +317,14 @@ export const ParameterPanel = ({
         </Group>
 
         <Group justify="space-between" mb={2}>
-          <Text size="xs" c="dimmed">{params.pressure} mmHg</Text>
+          <Group gap="xs">
+            <Text size="xs" c="dimmed">{params.pressure} mmHg</Text>
+            {damageImpact && (
+              <Badge color={damageImpact.color} variant="filled" size="xs">
+                {damageImpact.text}
+              </Badge>
+            )}
+          </Group>
           <Badge color={pressureStatus.color} variant="light" size="xs">
             {pressureStatus.label}风险
           </Badge>
@@ -249,13 +338,19 @@ export const ParameterPanel = ({
           step={1}
           size="xs"
           color={pressureStatus.color}
-          disabled={isRunning && !isPaused}
           marks={[
             { value: 32, label: '32' },
             { value: 100, label: '100' },
             { value: 200, label: '200' },
           ]}
         />
+
+        {/* 压力影响提示 */}
+        {isRunning && (
+          <Text size="10px" c="dimmed" mt={4}>
+            当前压力 {params.pressure}mmHg，伤害累积速度: {params.pressure > 32 ? '↑ 加快' : '→ 正常'}
+          </Text>
+        )}
       </Box>
 
       {/* 高级设置 */}
@@ -292,7 +387,6 @@ export const ParameterPanel = ({
               ]}
               size="xs"
               fullWidth
-              disabled={isRunning && !isPaused}
             />
             <Text size="9px" c="dimmed" mt={4}>
               1x = 实时 | 60x = 1分钟=1小时
@@ -317,20 +411,18 @@ export const ParameterPanel = ({
         </Group>
 
         <Group grow gap="xs">
-          <Button
-            onClick={onStart}
-            disabled={isRunning && !isFinished}
-            size="compact-xs"
-            color="green"
-            leftSection={<IconPlayerPlay size={12} />}
-          >
-            开始
-          </Button>
-
-          {isPaused ? (
+          {!isRunning ? (
+            <Button
+              onClick={onStart}
+              size="compact-xs"
+              color="green"
+              leftSection={<IconPlayerPlay size={12} />}
+            >
+              开始
+            </Button>
+          ) : isPaused ? (
             <Button
               onClick={onResume}
-              disabled={!isRunning || isFinished}
               size="compact-xs"
               color="green"
               leftSection={<IconPlayerPlay size={12} />}
@@ -340,7 +432,6 @@ export const ParameterPanel = ({
           ) : (
             <Button
               onClick={onPause}
-              disabled={!isRunning || isPaused || isFinished}
               size="compact-xs"
               variant="light"
               color="yellow"
@@ -352,7 +443,7 @@ export const ParameterPanel = ({
 
           <Button
             onClick={onFinish}
-            disabled={!isRunning || isFinished}
+            disabled={!isRunning}
             size="compact-xs"
             color="blue"
             leftSection={<IconDeviceFloppy size={12} />}
@@ -371,13 +462,15 @@ export const ParameterPanel = ({
         </Group>
       </Paper>
 
-      {/* 提示信息 */}
-      {isRunning && !isPaused && (
-        <Paper p="xs" radius="xs" bg="yellow.0">
-          <Group gap={4}>
-            <IconInfoCircle size={12} color="var(--mantine-color-yellow-6)" />
-            <Text size="10px" c="yellow.8">
-              仿真运行中，部分参数已锁定
+      {/* 风险提示 */}
+      {isRunning && params.pressure > 100 && (
+        <Paper p="xs" radius="xs" bg="red.0" withBorder>
+          <Group gap="xs">
+            <ThemeIcon color="red" variant="light" size="sm">
+              <IconAlertCircle size={14} />
+            </ThemeIcon>
+            <Text size="10px" c="red.8">
+              高压警告：当前压力 {params.pressure}mmHg 远超安全值
             </Text>
           </Group>
         </Paper>
