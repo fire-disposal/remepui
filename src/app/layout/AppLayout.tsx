@@ -1,9 +1,8 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import {
   AppShell,
   Group,
   Text,
-  Container,
   Avatar,
   Menu,
   Stack,
@@ -15,7 +14,10 @@ import {
   useMantineTheme,
   Box,
   Transition,
+  Burger,
+  ScrollArea,
 } from "@mantine/core";
+import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import { IconLogout, IconSwitch, IconSettings, IconUser, IconCheck } from "@tabler/icons-react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { useAuthStore } from "../../shared/store/auth";
@@ -46,12 +48,34 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
   const currentShellId = useShellStore((state) => state.currentShellId);
   const currentShell = useShellStore((state) => state.currentShell);
   const setShell = useShellStore((state) => state.setShell);
+  const isMobile = useMediaQuery("(max-width: 48em)");
 
   // 切换动画状态
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [navbarOpened, { toggle: toggleNavbar, close: closeNavbar }] = useDisclosure(false);
+
+  const availablePaths = useMemo(
+    () => currentShell.menuItems.map((item) => item.path),
+    [currentShell.menuItems],
+  );
+  const fallbackPath = availablePaths[0] ?? "/";
+  const isPathAllowed = availablePaths.includes(location.pathname);
+  const shellTitleColor = currentShell.primaryColor === "gray" ? "dark.7" : `${currentShell.primaryColor}.7`;
 
   // 只在登录页不显示布局
   const isLoginPage = location.pathname === "/login";
+
+  // 刷新或手动输入 URL 时，确保页面路径属于当前外壳
+  useEffect(() => {
+    if (!isLoginPage && token && user && !isPathAllowed && !isTransitioning) {
+      navigate({ to: fallbackPath, replace: true });
+    }
+  }, [fallbackPath, isLoginPage, isPathAllowed, isTransitioning, navigate, token, user]);
+
+  // 切换外壳后，移动端自动收起导航
+  useEffect(() => {
+    closeNavbar();
+  }, [currentShellId, closeNavbar]);
 
   if (isLoginPage || !token || !user) {
     return <>{children}</>;
@@ -70,7 +94,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
         // 如果当前路径在新外壳的菜单中不存在，导航到首页
         const paths = SHELL_CONFIGS[newShellId].menuItems.map(m => m.path);
         if (!paths.includes(location.pathname)) {
-          navigate({ to: "/" });
+          navigate({ to: paths[0] || "/", replace: true });
         }
       }, 150);
     }
@@ -79,6 +103,9 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
   // 处理导航
   const handleNavigate = (path: string) => {
     navigate({ to: path });
+    if (isMobile) {
+      closeNavbar();
+    }
   };
 
   // 处理登出
@@ -96,7 +123,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
       navbar={{
         width: 250,
         breakpoint: "sm",
-        collapsed: { mobile: true },
+        collapsed: { mobile: !navbarOpened },
       }}
       padding="md"
     >
@@ -105,8 +132,15 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
         <Group justify="space-between" h="100%" px="md">
           {/* 左侧：LOGO + 标题 */}
           <Group gap="sm" wrap="nowrap">
+            <Burger
+              hiddenFrom="sm"
+              opened={navbarOpened}
+              onClick={toggleNavbar}
+              size="sm"
+              aria-label="切换导航菜单"
+            />
             <UnstyledButton
-              onClick={() => handleNavigate("/")}
+              onClick={() => handleNavigate(fallbackPath)}
               style={{ padding: 0 }}
             >
               <Group gap="sm" wrap="nowrap">
@@ -137,7 +171,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
                         <Text size="sm" fw={600}>
                           {currentShell.title}
                         </Text>
-                        <Text size="xs" c={theme.primaryColor}>
+                        <Text size="xs" c={shellTitleColor}>
                           {currentShell.name}
                         </Text>
                       </div>
@@ -159,7 +193,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
                 data={getShellOptions()}
                 value={currentShellId}
                 onChange={handleShellChange}
-                leftSection={<IconSwitch size={18} />}
+                leftSection={<IconSwitch size={isMobile ? 14 : 18} />}
                 style={{ minWidth: 180 }}
                 size="sm"
                 renderOption={({ option, checked }) => (
@@ -171,7 +205,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
                       <Text size="sm">{option.label}</Text>
                     </Group>
                     {checked && (
-                      <IconCheck size={16} color={theme.colors[theme.primaryColor][6]} />
+                      <IconCheck size={isMobile ? 14 : 16} color={theme.colors[theme.primaryColor][6]} />
                     )}
                   </Group>
                 )}
@@ -203,15 +237,15 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
               </Menu.Target>
 
               <Menu.Dropdown>
-                <Menu.Item leftSection={<IconUser size={14} />} disabled>
+                <Menu.Item leftSection={<IconUser size={isMobile ? 12 : 14} />} disabled>
                   个人信息
                 </Menu.Item>
-                <Menu.Item leftSection={<IconSettings size={14} />} disabled>
+                <Menu.Item leftSection={<IconSettings size={isMobile ? 12 : 14} />} disabled>
                   设置
                 </Menu.Item>
                 <Menu.Divider />
                 <Menu.Item
-                  leftSection={<IconLogout size={14} />}
+                  leftSection={<IconLogout size={isMobile ? 12 : 14} />}
                   onClick={handleLogout}
                   color="red"
                 >
@@ -225,31 +259,48 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
 
       {/* 侧栏 */}
       <AppShell.Navbar p="md">
-        <Transition
-          mounted={!isTransitioning}
-          transition="slide-right"
-          duration={150}
-        >
-          {(styles) => (
-            <Stack gap="xs" style={styles}>
-              {currentShell.menuItems.map((item) => {
-                const IconComponent = item.icon ? ICON_MAP[item.icon] : null;
-                return (
-                  <NavLink
-                    key={item.id}
-                    label={item.label}
-                    leftSection={IconComponent ? <IconComponent size={20} /> : null}
-                    onClick={() => handleNavigate(item.path)}
-                    active={location.pathname === item.path}
-                    style={{ cursor: "pointer", borderRadius: "6px" }}
-                    variant="light"
-                    color={theme.primaryColor}
-                  />
-                );
-              })}
-            </Stack>
-          )}
-        </Transition>
+        <Stack gap="md" h="100%">
+          <Box hiddenFrom="sm">
+            <Select
+              placeholder="切换视图"
+              searchable
+              clearable={false}
+              data={getShellOptions()}
+              value={currentShellId}
+              onChange={handleShellChange}
+              leftSection={<IconSwitch size={14} />}
+              size="xs"
+            />
+          </Box>
+
+          <ScrollArea style={{ flex: 1 }}>
+            <Transition
+              mounted={!isTransitioning}
+              transition="slide-right"
+              duration={150}
+            >
+              {(styles) => (
+                <Stack gap="xs" style={styles}>
+                  {currentShell.menuItems.map((item) => {
+                    const IconComponent = item.icon ? ICON_MAP[item.icon] : null;
+                    return (
+                      <NavLink
+                        key={item.id}
+                        label={item.label}
+                        leftSection={IconComponent ? <IconComponent size={isMobile ? 16 : 20} /> : null}
+                        onClick={() => handleNavigate(item.path)}
+                        active={location.pathname === item.path}
+                        style={{ cursor: "pointer", borderRadius: "6px" }}
+                        variant="light"
+                        color={theme.primaryColor}
+                      />
+                    );
+                  })}
+                </Stack>
+              )}
+            </Transition>
+          </ScrollArea>
+        </Stack>
       </AppShell.Navbar>
 
       {/* 主区域 */}
