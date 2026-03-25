@@ -196,15 +196,15 @@ export const HUMAN_MODEL_CONFIG = {
     },
     remote_gltf: {
       id: 'remote_gltf',
-      name: '在线简洁人体模型',
-      description: '运行时从公网动态加载，避免将模型文件提交到仓库',
-      path: 'https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Assets@main/Models/RiggedSimple/glTF-Binary/RiggedSimple.glb',
+      name: '在线公开人体模型',
+      description: '运行时从公网加载公开人体模型，并通过姿态旋转呈现躺卧效果',
+      path: 'https://modelviewer.dev/shared-assets/models/CesiumMan.glb',
     },
   },
   /** 模型缩放 */
-  scale: 1.15,
+  scale: 1.0,
   /** 模型偏移 */
-  offset: [0, -0.06, 0] as [number, number, number],
+  offset: [0, -0.12, 0] as [number, number, number],
   /** 远程模型基础旋转（用于修正不同来源模型朝向） */
   remoteRotation: [0, Math.PI, 0] as [number, number, number],
 };
