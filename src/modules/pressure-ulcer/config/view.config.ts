@@ -213,7 +213,8 @@ export const HUMAN_MODEL_CONFIG = {
       id: 'remote_gltf',
       name: '在线公开人体模型',
       description: '运行时从公网加载公开人体模型，并通过姿态旋转呈现躺卧效果',
-      path: 'https://modelviewer.dev/shared-assets/models/CesiumMan.glb',
+      // 使用 Khronos glTF 官方示例模型 CDN 地址（稳定且可公开访问）
+      path: 'https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Models@main/2.0/CesiumMan/glTF-Binary/CesiumMan.glb',
     },
   },
   /** 模型缩放 */

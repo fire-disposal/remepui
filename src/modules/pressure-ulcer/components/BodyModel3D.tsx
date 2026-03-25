@@ -331,6 +331,9 @@ const HumanBodyGLTF = ({
 }: BodyModel3DProps) => {
   const modelPath = HUMAN_MODEL_CONFIG.availableModels.remote_gltf.path;
   const { scene } = useGLTF(modelPath);
+  const materialsRef = useRef<THREE.MeshStandardMaterial[]>([]);
+  const currentColorRef = useRef(new THREE.Color('#d1d5db'));
+  const currentEmissiveRef = useRef(0);
   // 使用远程模型专用姿态旋转配置
   const postureRotation = useMemo(() => {
     const rot = REMOTE_POSTURE_ROTATIONS[posture];
@@ -338,35 +341,50 @@ const HumanBodyGLTF = ({
     return [rot.x + baseX, rot.y + baseY, rot.z + baseZ] as [number, number, number];
   }, [posture]);
 
-  const bodyPartEntities = useMemo(() => {
-    const entities: Record<BodyPartType, BodyPartEntity3D> = {} as Record<BodyPartType, BodyPartEntity3D>;
-    (Object.keys(bodyParts) as BodyPartType[]).forEach(partId => {
-      const part = bodyParts[partId];
-      const config = BODY_PARTS_3D_CONFIG[partId];
-      entities[partId] = {
-        id: partId,
-        partType: partId,
-        name: part.name,
-        damage: part.damage,
-        pressure: part.pressure,
-        position: config.position,
-        rotation: config.rotation,
-        // 远程模型模式下，压疮点位使用小尺寸热点，避免出现散落的人体部件视觉
-        scale: [0.07, 0.07, 0.07],
-        visible: true,
-        opacity: 0.95,
-        isHighlighted: part.damage >= 50,
-        highlightColor: '#60a5fa',
-        geometry: 'sphere',
-        pulseAnimation: isRunning && part.damage >= 30,
-      };
-    });
-    return entities;
-  }, [bodyParts, isRunning]);
+  const overallDamage = useMemo(() => {
+    const damages = (Object.keys(bodyParts) as BodyPartType[]).map(partId => bodyParts[partId].damage);
+    if (damages.length === 0) return 0;
+
+    const avgDamage = damages.reduce((sum, value) => sum + value, 0) / damages.length;
+    const maxDamage = Math.max(...damages);
+    // 兼顾全身平均损伤与局部最重损伤，颜色变化更稳健。
+    return avgDamage * 0.65 + maxDamage * 0.35;
+  }, [bodyParts]);
+
+  const targetColor = useMemo(() => {
+    const colorStops = [
+      { damage: 0, color: new THREE.Color('#d1d5db') },
+      { damage: 20, color: new THREE.Color('#84cc16') },
+      { damage: 40, color: new THREE.Color('#eab308') },
+      { damage: 60, color: new THREE.Color('#f97316') },
+      { damage: 80, color: new THREE.Color('#ef4444') },
+      { damage: 100, color: new THREE.Color('#991b1b') },
+    ];
+
+    for (let i = 0; i < colorStops.length - 1; i += 1) {
+      const start = colorStops[i];
+      const end = colorStops[i + 1];
+
+      if (overallDamage >= start.damage && overallDamage <= end.damage) {
+        const t = (overallDamage - start.damage) / (end.damage - start.damage);
+        return start.color.clone().lerp(end.color, THREE.MathUtils.clamp(t, 0, 1));
+      }
+    }
+
+    return colorStops[colorStops.length - 1].color.clone();
+  }, [overallDamage]);
+
+  const targetEmissiveIntensity = useMemo(() => {
+    const normalized = THREE.MathUtils.clamp((overallDamage - 20) / 80, 0, 1);
+    // 使用平滑函数避免低损伤时闪烁，高损伤时渐进增强。
+    return THREE.MathUtils.smoothstep(normalized, 0, 1) * 0.45;
+  }, [overallDamage]);
 
   const [hoveredPart, setHoveredPart] = useState<BodyPartType | null>(null);
   const clonedScene = useMemo(() => {
     const cloned = scene.clone(true);
+    const collectedMaterials: THREE.MeshStandardMaterial[] = [];
+
     cloned.traverse((obj) => {
       const mesh = obj as THREE.Mesh;
       if (!mesh.isMesh) return;
@@ -394,7 +412,9 @@ const HumanBodyGLTF = ({
           bumpMap: null,
           displacementMap: null,
           envMap: null,
+          vertexColors: false,
         });
+        collectedMaterials.push(material);
         return material;
       });
 
@@ -404,8 +424,28 @@ const HumanBodyGLTF = ({
       mesh.castShadow = true;
       mesh.receiveShadow = true;
     });
+
+    materialsRef.current = collectedMaterials;
     return cloned;
   }, [scene]);
+
+  useFrame((_, delta) => {
+    const smoothing = 1 - Math.exp(-delta * 3.5);
+
+    currentColorRef.current.lerp(targetColor, smoothing);
+    currentEmissiveRef.current = THREE.MathUtils.lerp(
+      currentEmissiveRef.current,
+      targetEmissiveIntensity,
+      smoothing,
+    );
+
+    materialsRef.current.forEach((material) => {
+      material.color.copy(currentColorRef.current);
+      material.emissive.copy(currentColorRef.current).multiplyScalar(0.32);
+      material.emissiveIntensity = currentEmissiveRef.current;
+      material.needsUpdate = true;
+    });
+  });
 
   return (
     <group position={[0, 0.08, 0]} rotation={postureRotation}>
