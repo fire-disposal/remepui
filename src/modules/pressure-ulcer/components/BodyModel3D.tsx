@@ -292,7 +292,11 @@ const HumanBodyPrimitive = ({
         <meshStandardMaterial color="#f5d0c5" roughness={0.5} />
       </mesh>
 
-      {/* 压疮高发部位 */}
+      {/*
+        压疮关键点（3D 热点）暂时禁用：
+        根据产品需求，先注释掉三维场景内的关键点显示，只保留人体模型展示。
+      */}
+      {/*
       {(Object.keys(bodyPartEntities) as BodyPartType[]).map(partId => (
         <BodyPartMesh
           key={partId}
@@ -303,6 +307,7 @@ const HumanBodyPrimitive = ({
           isRunning={isRunning}
         />
       ))}
+      */}
     </group>
   );
 };
@@ -383,6 +388,11 @@ const HumanBodyGLTF = ({
       <group scale={HUMAN_MODEL_CONFIG.scale} position={HUMAN_MODEL_CONFIG.offset}>
         <primitive object={clonedScene} />
       </group>
+      {/*
+        压疮关键点（3D 热点）暂时禁用：
+        根据产品需求，先注释掉三维场景内的关键点显示，只保留人体模型展示。
+      */}
+      {/*
       {(Object.keys(bodyPartEntities) as BodyPartType[]).map(partId => (
         <BodyPartMesh
           key={partId}
@@ -399,6 +409,7 @@ const HumanBodyGLTF = ({
           isRunning={isRunning}
         />
       ))}
+      */}
     </group>
   );
 };
