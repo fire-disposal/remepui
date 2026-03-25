@@ -179,7 +179,7 @@ export const MATTRESS_CONFIG = {
  */
 export const HUMAN_MODEL_CONFIG = {
   /** 当前使用的模型类型 */
-  currentModel: 'primitive' as const,
+  currentModel: 'remote_gltf' as const,
   /** 可用模型列表 */
   availableModels: {
     primitive: {
@@ -194,11 +194,17 @@ export const HUMAN_MODEL_CONFIG = {
       description: '从GLTF/GLB文件加载的精细人体模型',
       path: '/models/human_body.glb',
     },
+    remote_gltf: {
+      id: 'remote_gltf',
+      name: '在线简洁人体模型',
+      description: '运行时从公网动态加载，避免将模型文件提交到仓库',
+      path: 'https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Models@main/2.0/CesiumMan/glTF-Binary/CesiumMan.glb',
+    },
   },
   /** 模型缩放 */
-  scale: 1.0,
+  scale: 0.95,
   /** 模型偏移 */
-  offset: [0, 0, 0] as [number, number, number],
+  offset: [0, -0.02, 0] as [number, number, number],
 };
 
 /**
