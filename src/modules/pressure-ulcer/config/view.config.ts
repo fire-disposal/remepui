@@ -95,14 +95,17 @@ export const DEFAULT_SCENE_CONFIG: Scene3DConfig = {
 /**
  * 身体部位 3D 配置
  * 定义各部位在 3D 空间中的位置和大小
- * 
+ *
  * 坐标系说明（躺卧姿态）：
  * - X轴：左右方向（负为左，正为右）
  * - Y轴：上下方向（负为下，正为上）
  * - Z轴：前后方向（负为头，正为脚）
- * 
+ *
  * 注意：这些位置是相对于人体模型局部坐标系的
  * 模型会整体旋转为躺卧姿态
+ *
+ * 已弃用：geometry 字段中的 'sphere' 和 'capsule' 类型已弃用，
+ * 不再用于渲染。保留配置供参考。
  */
 export const BODY_PARTS_3D_CONFIG = {
   // 骶骨 - 位于躯干下部后方
@@ -110,7 +113,7 @@ export const BODY_PARTS_3D_CONFIG = {
     position: [0, 0.3, 0.2] as [number, number, number],
     rotation: [0, 0, 0] as [number, number, number],
     scale: [0.25, 0.2, 0.15] as [number, number, number],
-    geometry: 'capsule',
+    geometry: 'capsule', // 已弃用：不再渲染
     color: '#f5d0c5',
   },
   // 左脚跟
@@ -118,7 +121,7 @@ export const BODY_PARTS_3D_CONFIG = {
     position: [-0.15, 0, -0.8] as [number, number, number],
     rotation: [0, 0, 0] as [number, number, number],
     scale: [0.12, 0.1, 0.12] as [number, number, number],
-    geometry: 'sphere',
+    geometry: 'sphere', // 已弃用：不再渲染
     color: '#f5d0c5',
   },
   // 右脚跟
@@ -126,7 +129,7 @@ export const BODY_PARTS_3D_CONFIG = {
     position: [0.15, 0, -0.8] as [number, number, number],
     rotation: [0, 0, 0] as [number, number, number],
     scale: [0.12, 0.1, 0.12] as [number, number, number],
-    geometry: 'sphere',
+    geometry: 'sphere', // 已弃用：不再渲染
     color: '#f5d0c5',
   },
   // 左大转子（股骨）
@@ -134,7 +137,7 @@ export const BODY_PARTS_3D_CONFIG = {
     position: [-0.35, 0.35, 0.1] as [number, number, number],
     rotation: [0, 0, 0] as [number, number, number],
     scale: [0.15, 0.18, 0.15] as [number, number, number],
-    geometry: 'capsule',
+    geometry: 'capsule', // 已弃用：不再渲染
     color: '#f5d0c5',
   },
   // 右大转子（股骨）
@@ -142,13 +145,13 @@ export const BODY_PARTS_3D_CONFIG = {
     position: [0.35, 0.35, 0.1] as [number, number, number],
     rotation: [0, 0, 0] as [number, number, number],
     scale: [0.15, 0.18, 0.15] as [number, number, number],
-    geometry: 'capsule',
+    geometry: 'capsule', // 已弃用：不再渲染
     color: '#f5d0c5',
   },
 };
 
 /**
- * 姿态旋转配置
+ * 姿态旋转配置（用于基础几何体模型）
  * 注意：模型默认为站立姿态，需要旋转为躺卧姿态
  */
 export const POSTURE_ROTATIONS = {
@@ -157,6 +160,18 @@ export const POSTURE_ROTATIONS = {
   lateral_left: { x: 0, y: 0, z: Math.PI / 2 }, // 左侧卧位
   lateral_right: { x: 0, y: 0, z: -Math.PI / 2 }, // 右侧卧位
   sitting: { x: -Math.PI / 4, y: 0, z: 0 },     // 坐位：半躺
+};
+
+/**
+ * 远程模型姿态旋转配置（相对于基础躺卧姿态的增量旋转）
+ * 基础旋转已在 remoteRotation 中设置，这里仅设置姿态变化
+ */
+export const REMOTE_POSTURE_ROTATIONS = {
+  supine: { x: 0, y: 0, z: 0 },           // 仰卧位：基础姿态，无需额外旋转
+  prone: { x: Math.PI, y: 0, z: 0 },     // 俯卧位：翻转180度
+  lateral_left: { x: 0, y: 0, z: Math.PI / 2 }, // 左侧卧位
+  lateral_right: { x: 0, y: 0, z: -Math.PI / 2 }, // 右侧卧位
+  sitting: { x: Math.PI / 4, y: 0, z: 0 }, // 坐位：抬起上半身
 };
 
 /**
@@ -206,7 +221,8 @@ export const HUMAN_MODEL_CONFIG = {
   /** 模型偏移 */
   offset: [0, -0.12, 0] as [number, number, number],
   /** 远程模型基础旋转（用于修正不同来源模型朝向） */
-  remoteRotation: [0, Math.PI, 0] as [number, number, number],
+  // X轴旋转90度使模型躺下（从站立变为仰卧），Y轴旋转180度调整朝向
+  remoteRotation: [Math.PI / 2, Math.PI, 0] as [number, number, number],
 };
 
 /**

@@ -29,6 +29,7 @@ import {
   getDamageColor3D,
   getDamageEmissiveIntensity,
   POSTURE_ROTATIONS,
+  REMOTE_POSTURE_ROTATIONS,
   MATTRESS_CONFIG,
   HUMAN_MODEL_CONFIG,
 } from '../config/view.config';
@@ -50,7 +51,11 @@ interface BodyModel3DProps {
 
 /**
  * 身体部位 3D 实体
+ *
+ * 已弃用：该组件使用圆形（球体）和胶囊型几何体，根据产品需求不再使用。
+ * 保留代码供参考，如需启用请取消注释。
  */
+/*
 const BodyPartMesh = ({
   entity,
   isHovered,
@@ -108,29 +113,23 @@ const BodyPartMesh = ({
         />
       </mesh>
 
-      {/* 伤害指示器 */}
-      {entity.damage >= 10 && (
-        <Html distanceFactor={10} position={[0, entity.scale[1] * 0.8, 0]}>
-          <div
-            style={{
-              background: damageColor,
-              color: 'white',
-              padding: '4px 8px',
-              borderRadius: '12px',
-              fontSize: '12px',
-              fontWeight: 'bold',
-              whiteSpace: 'nowrap',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-              pointerEvents: 'none',
-              transform: 'translate(-50%, -50%)',
-            }}
-          >
-            {Math.round(entity.damage)}%
-          </div>
-        </Html>
-      )}
+      <div
+        style={{
+          background: damageColor,
+          color: 'white',
+          padding: '4px 8px',
+          borderRadius: '12px',
+          fontSize: '12px',
+          fontWeight: 'bold',
+          whiteSpace: 'nowrap',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+          pointerEvents: 'none',
+          transform: 'translate(-50%, -50%)',
+        }}
+      >
+        {Math.round(entity.damage)}%
+      </div>
 
-      {/* 高亮环 */}
       {(isHovered || entity.damage >= 50) && (
         <mesh geometry={geometry} scale={entity.scale.map(s => s * 1.2) as [number, number, number]}>
           <meshBasicMaterial
@@ -144,6 +143,7 @@ const BodyPartMesh = ({
     </group>
   );
 };
+*/
 
 /**
  * 床垫组件
@@ -256,7 +256,15 @@ const HumanBodyPrimitive = ({
 
   return (
     <group ref={groupRef} position={[0, lyingOffset, 0]} rotation={postureRotation}>
-      {/* 躯干主体 - 简化表示 */}
+      {/*
+        以下圆形和胶囊型元素已弃用，不再显示：
+        - 躯干主体（胶囊体）
+        - 头部（球体）
+        - 手臂（胶囊体）
+        - 腿部（胶囊体）
+        根据产品需求，基础几何体模型已不再使用，请切换到远程GLTF模型。
+      */}
+      {/*
       <mesh position={[0, 0.5, 0]} castShadow>
         <capsuleGeometry args={[0.35, 1.2, 4, 16]} />
         <meshStandardMaterial
@@ -266,13 +274,11 @@ const HumanBodyPrimitive = ({
         />
       </mesh>
 
-      {/* 头部 */}
       <mesh position={[0, 1.4, 0]} castShadow>
         <sphereGeometry args={[0.2, 32, 32]} />
         <meshStandardMaterial color="#f5d0c5" roughness={0.5} />
       </mesh>
 
-      {/* 手臂 */}
       <mesh position={[-0.55, 0.5, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
         <capsuleGeometry args={[0.08, 0.6, 4, 16]} />
         <meshStandardMaterial color="#f5d0c5" roughness={0.5} />
@@ -282,7 +288,6 @@ const HumanBodyPrimitive = ({
         <meshStandardMaterial color="#f5d0c5" roughness={0.5} />
       </mesh>
 
-      {/* 腿部 */}
       <mesh position={[-0.15, -0.6, 0]} castShadow>
         <capsuleGeometry args={[0.12, 0.8, 4, 16]} />
         <meshStandardMaterial color="#f5d0c5" roughness={0.5} />
@@ -291,6 +296,7 @@ const HumanBodyPrimitive = ({
         <capsuleGeometry args={[0.12, 0.8, 4, 16]} />
         <meshStandardMaterial color="#f5d0c5" roughness={0.5} />
       </mesh>
+      */}
 
       {/*
         压疮关键点（3D 热点）暂时禁用：
@@ -325,8 +331,9 @@ const HumanBodyGLTF = ({
 }: BodyModel3DProps) => {
   const modelPath = HUMAN_MODEL_CONFIG.availableModels.remote_gltf.path;
   const { scene } = useGLTF(modelPath);
+  // 使用远程模型专用姿态旋转配置
   const postureRotation = useMemo(() => {
-    const rot = POSTURE_ROTATIONS[posture];
+    const rot = REMOTE_POSTURE_ROTATIONS[posture];
     const [baseX, baseY, baseZ] = HUMAN_MODEL_CONFIG.remoteRotation;
     return [rot.x + baseX, rot.y + baseY, rot.z + baseZ] as [number, number, number];
   }, [posture]);
@@ -362,21 +369,38 @@ const HumanBodyGLTF = ({
     const cloned = scene.clone(true);
     cloned.traverse((obj) => {
       const mesh = obj as THREE.Mesh;
-      if (!mesh.isMesh || !mesh.material) return;
+      if (!mesh.isMesh) return;
 
-      const sourceMaterial = mesh.material as THREE.MeshStandardMaterial;
-      const material = sourceMaterial.clone();
-      material.color = new THREE.Color('#d1d5db');
-      material.emissive = new THREE.Color('#000000');
-      material.metalness = 0.05;
-      material.roughness = 0.85;
-      material.map = null;
-      material.emissiveMap = null;
-      material.normalMap = null;
-      material.aoMap = null;
-      material.roughnessMap = null;
-      material.metalnessMap = null;
-      mesh.material = material;
+      // 处理单材质或多材质（数组）
+      const materials = Array.isArray(mesh.material)
+        ? mesh.material
+        : [mesh.material];
+
+      const newMaterials = materials.map(() => {
+        const material = new THREE.MeshStandardMaterial({
+          color: new THREE.Color('#d1d5db'),
+          emissive: new THREE.Color('#000000'),
+          metalness: 0.05,
+          roughness: 0.85,
+          // 完全移除所有贴图，避免彩色条纹
+          map: null,
+          emissiveMap: null,
+          normalMap: null,
+          aoMap: null,
+          roughnessMap: null,
+          metalnessMap: null,
+          alphaMap: null,
+          lightMap: null,
+          bumpMap: null,
+          displacementMap: null,
+          envMap: null,
+        });
+        return material;
+      });
+
+      mesh.material = Array.isArray(mesh.material)
+        ? newMaterials
+        : newMaterials[0];
       mesh.castShadow = true;
       mesh.receiveShadow = true;
     });
