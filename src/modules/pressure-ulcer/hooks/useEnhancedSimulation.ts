@@ -30,7 +30,7 @@ import type {
   PressureUlcerEvent,
   SimulationRecord,
   RiskFactors,
-  BodyPartType,
+  BodyPosture,
 } from '../types';
 
 /**
@@ -58,6 +58,8 @@ export interface EnhancedSimulationState extends SimulationState {
   recommendedRepositionTime: number;
   /** 预计压疮形成时间 */
   predictedUlcerTime: number | null;
+  /** 当前体位 */
+  posture: BodyPosture;
 }
 
 /**
@@ -85,8 +87,16 @@ const createInitialState = (): EnhancedSimulationState => {
     predictionData: [],
     recommendedRepositionTime: criticalTime * 0.3,
     predictedUlcerTime: null,
+    posture: 'supine',
   };
 };
+
+const REPOSITION_POSTURE_SEQUENCE: BodyPosture[] = [
+  'supine',
+  'lateral_left',
+  'lateral_right',
+  'prone',
+];
 
 export const useEnhancedSimulation = () => {
   // 参数状态 - 支持实时调整
@@ -108,6 +118,7 @@ export const useEnhancedSimulation = () => {
   const currentRecordRef = useRef<SimulationRecord | null>(null);
   const alertTriggeredRef = useRef({ warning: false, danger: false });
   const paramChangePointsRef = useRef<Array<{ time: number; param: string; value: number }>>([]);
+  const lastPredictionBucketRef = useRef<number>(-1);
 
   // 计算派生值
   const riskScore = useMemo(() => calculateRiskScore(params), [params]);
@@ -128,11 +139,11 @@ export const useEnhancedSimulation = () => {
   );
 
   // 更新预测数据
-  const updatePrediction = useCallback(() => {
+  const updatePrediction = useCallback((damageValue: number) => {
     const prediction = generateDamagePrediction(
       riskScore,
       params.pressure,
-      state.damagePercent,
+      damageValue,
       7200, // 预测2小时
       300   // 每5分钟一个点
     );
@@ -145,7 +156,7 @@ export const useEnhancedSimulation = () => {
       predictedUlcerTime: predictedTime,
       recommendedRepositionTime: recommendedInterval,
     }));
-  }, [riskScore, params.pressure, state.damagePercent, recommendedInterval]);
+  }, [riskScore, params.pressure, recommendedInterval]);
 
   // 参数更新（支持实时调整）
   const updateParams = useCallback((updates: Partial<SimulationParams>) => {
@@ -199,12 +210,16 @@ export const useEnhancedSimulation = () => {
   }, [state.elapsedTime, state.damagePercent]);
 
   // 仿真循环
-  const simulationLoop = useCallback((timestamp: number) => {
+  const simulationLoop = useCallback(function simulationLoopFrame(timestamp: number) {
     if (!lastUpdateRef.current) {
       lastUpdateRef.current = timestamp;
     }
 
     const deltaTime = (timestamp - lastUpdateRef.current) / 1000;
+    if (deltaTime < 1 / 30) {
+      animationRef.current = requestAnimationFrame(simulationLoopFrame);
+      return;
+    }
     lastUpdateRef.current = timestamp;
 
     setState(prev => {
@@ -214,15 +229,16 @@ export const useEnhancedSimulation = () => {
       let newTotalIschemiaTime = prev.totalIschemiaTime;
       let newRecoveryStartTime = prev.recoveryStartTime;
       
+      newElapsedTime += adjustedDeltaTime;
+
       if (prev.isRecovering) {
         // 恢复期
         newRecoveryStartTime += adjustedDeltaTime;
-        if (newRecoveryStartTime > 300) { // 5分钟后结束恢复
-          // 可以在这里添加恢复完成的逻辑
+        if (newRecoveryStartTime > 120) { // 2分钟后结束恢复
+          newRecoveryStartTime = 0;
         }
       } else {
         // 正常压力期
-        newElapsedTime += adjustedDeltaTime;
         newTotalIschemiaTime += adjustedDeltaTime;
       }
 
@@ -276,6 +292,7 @@ export const useEnhancedSimulation = () => {
         elapsedTime: newElapsedTime,
         totalIschemiaTime: newTotalIschemiaTime,
         recoveryStartTime: newRecoveryStartTime,
+        isRecovering: prev.isRecovering && newRecoveryStartTime > 0,
         damagePercent: totalDamage,
         bodyParts: updatedBodyParts,
         history: newHistory,
@@ -285,7 +302,7 @@ export const useEnhancedSimulation = () => {
       };
     });
 
-    animationRef.current = requestAnimationFrame(simulationLoop);
+    animationRef.current = requestAnimationFrame(simulationLoopFrame);
   }, [params, riskScore, criticalTime, recommendedInterval]);
 
   // 开始仿真
@@ -402,13 +419,22 @@ export const useEnhancedSimulation = () => {
         isRecovering: true,
         recoveryStartTime: 0,
         repositionCount: prev.repositionCount + 1,
-        elapsedTime: 0, // 重置当前体位时间
+        totalIschemiaTime: Math.max(0, prev.totalIschemiaTime * 0.15),
+        posture:
+          REPOSITION_POSTURE_SEQUENCE[(prev.repositionCount + 1) % REPOSITION_POSTURE_SEQUENCE.length],
+        bodyParts: updateBodyPartsAdvanced(
+          prev.bodyParts,
+          0,
+          params.pressure,
+          true,
+          90
+        ),
       };
     });
 
     alertTriggeredRef.current = { warning: false, danger: false };
     setAlertState({ level: 'none', message: '' });
-  }, []);
+  }, [params.pressure]);
 
   // 结束恢复期
   const endRecovery = useCallback(() => {
@@ -440,7 +466,6 @@ export const useEnhancedSimulation = () => {
 
   // 获取风险因素
   const getRiskFactors = useCallback((): RiskFactors => {
-    const { bmi, temperature, humidity, pressure } = params;
     return {
       bmi: params.bmi < 18.5 ? 3.0 : params.bmi < 25 ? 0.5 : params.bmi < 30 ? 1.5 : 2.5,
       temperature: params.temperature < 18 ? 1.0 : params.temperature <= 25 ? 0.5 : params.temperature < 30 ? 1.5 : 2.5,
@@ -496,8 +521,12 @@ export const useEnhancedSimulation = () => {
 
   // 更新预测
   useEffect(() => {
-    updatePrediction();
-  }, [updatePrediction]);
+    const damageBucket = Math.round(state.damagePercent / 2);
+    if (!state.isRunning || damageBucket !== lastPredictionBucketRef.current) {
+      lastPredictionBucketRef.current = damageBucket;
+      updatePrediction(state.damagePercent);
+    }
+  }, [state.isRunning, state.damagePercent, updatePrediction]);
 
   // 清理
   useEffect(() => {

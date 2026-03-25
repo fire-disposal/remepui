@@ -3,14 +3,11 @@
  * 支持 2D/3D 双模式切换
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import {
   Box,
   Paper,
   Text,
-  Group,
-  Transition,
-  Loader,
 } from '@mantine/core';
 import { BodyModel } from './BodyModel';
 import { BodyModel3D } from './BodyModel3D';
@@ -34,6 +31,7 @@ interface BodyModelEnhancedProps {
   isFinished?: boolean;
   defaultMode?: ViewMode;
   enable3D?: boolean;
+  posture?: BodyPosture;
 }
 
 /**
@@ -49,36 +47,28 @@ export const BodyModelEnhanced = ({
   isFinished = false,
   defaultMode = '2d',
   enable3D = true,
+  posture,
 }: BodyModelEnhancedProps) => {
   // 视图状态
   const [viewState, setViewState] = useState<ViewState>({
     ...DEFAULT_VIEW_STATE,
     mode: defaultMode,
   });
-
-  const [isLoading, setIsLoading] = useState(false);
+  const [hasMounted3D, setHasMounted3D] = useState(defaultMode === '3d');
+  const effectivePosture = posture ?? viewState.posture;
 
   // 切换视图模式
   const handleModeChange = useCallback((mode: ViewMode) => {
     if (mode === viewState.mode) return;
-
-    setIsLoading(true);
+    if (mode === '3d') {
+      setHasMounted3D(true);
+    }
     setViewState(prev => ({
       ...prev,
-      isTransitioning: true,
-      transitionProgress: 0,
+      mode,
+      isTransitioning: false,
+      transitionProgress: 1,
     }));
-
-    // 模拟切换动画
-    setTimeout(() => {
-      setViewState(prev => ({
-        ...prev,
-        mode,
-        isTransitioning: false,
-        transitionProgress: 1,
-      }));
-      setIsLoading(false);
-    }, 300);
   }, [viewState.mode]);
 
   // 切换渲染引擎
@@ -129,7 +119,7 @@ export const BodyModelEnhanced = ({
           <ViewSwitcher
             currentMode={viewState.mode}
             currentEngine={viewState.engine}
-            currentPosture={viewState.posture}
+            currentPosture={effectivePosture}
             autoRotate={viewState.autoRotate}
             onModeChange={handleModeChange}
             onEngineChange={handleEngineChange}
@@ -140,49 +130,44 @@ export const BodyModelEnhanced = ({
         </Box>
       )}
 
-      {/* 加载指示器 */}
-      <Transition mounted={isLoading} transition="fade" duration={200}>
-        {(styles) => (
-          <Box
-            style={{
-              ...styles,
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              zIndex: 50,
-            }}
-          >
-            <Loader size="lg" color="blue" />
-          </Box>
-        )}
-      </Transition>
-
-      {/* 视图内容 */}
-      <Box
-        style={{
-          width: '100%',
-          height: '100%',
-          opacity: isLoading ? 0.3 : 1,
-          transition: 'opacity 0.3s ease',
-        }}
-      >
-        {viewState.mode === '2d' ? (
+      {/* 视图内容（2D/3D 保活切换，避免反复卸载导致的大刷新） */}
+      <Box style={{ position: 'relative', width: '100%', height: '100%' }}>
+        <Box
+          style={{
+            position: 'absolute',
+            inset: 0,
+            opacity: viewState.mode === '2d' ? 1 : 0,
+            pointerEvents: viewState.mode === '2d' ? 'auto' : 'none',
+            transition: 'opacity 0.2s ease',
+          }}
+        >
           <BodyModel
             bodyParts={bodyParts}
             onReposition={onReposition}
             isRunning={isRunning}
             isFinished={isFinished}
           />
-        ) : (
-          <BodyModel3D
-            bodyParts={bodyParts}
-            posture={viewState.posture}
-            autoRotate={viewState.autoRotate}
-            onPartHover={handlePartHover}
-            onPartClick={handlePartClick}
-            isRunning={isRunning}
-          />
+        </Box>
+
+        {hasMounted3D && (
+          <Box
+            style={{
+              position: 'absolute',
+              inset: 0,
+              opacity: viewState.mode === '3d' ? 1 : 0,
+              pointerEvents: viewState.mode === '3d' ? 'auto' : 'none',
+              transition: 'opacity 0.2s ease',
+            }}
+          >
+            <BodyModel3D
+              bodyParts={bodyParts}
+              posture={effectivePosture}
+              autoRotate={viewState.autoRotate}
+              onPartHover={handlePartHover}
+              onPartClick={handlePartClick}
+              isRunning={isRunning}
+            />
+          </Box>
         )}
       </Box>
 

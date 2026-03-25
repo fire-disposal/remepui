@@ -365,6 +365,7 @@ export const PressureUlcerPage = () => {
                     isRunning={state.isRunning}
                     isFinished={state.isFinished}
                     enable3D={true}
+                    posture={state.posture}
                   />
                 </Box>
               </Paper>

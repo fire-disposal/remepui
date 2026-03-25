@@ -14,13 +14,11 @@
  */
 
 import { useRef, useMemo, useState, useCallback, Suspense } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import {
   OrbitControls,
-  Grid,
   Environment,
   ContactShadows,
-  PerspectiveCamera,
   Html,
   useGLTF,
 } from '@react-three/drei';
@@ -67,13 +65,10 @@ const BodyPartMesh = ({
   isRunning?: boolean;
 }) => {
   const meshRef = useRef<THREE.Mesh>(null);
-  const [pulseScale, setPulseScale] = useState(1);
-
   // 脉冲动画
   useFrame(({ clock }) => {
     if (isRunning && entity.damage >= 30 && meshRef.current) {
       const pulse = 1 + Math.sin(clock.getElapsedTime() * 3) * 0.05 * (entity.damage / 100);
-      setPulseScale(pulse);
       meshRef.current.scale.setScalar(pulse);
     }
   });
@@ -313,25 +308,75 @@ const HumanBodyPrimitive = ({
 };
 
 /**
- * GLTF精细人体模型（未来扩展）
- * 使用方法：
- * 1. 将精细模型文件放入 public/models/human_body.glb
- * 2. 模型需要包含骨骼动画和压疮部位的命名节点
- * 3. 取消下方注释并实现具体逻辑
+ * 远程 GLTF 人体模型
+ * 模型在运行时动态拉取，不在仓库中存放二进制文件
  */
-// const HumanBodyGLTF = (props: BodyModel3DProps) => {
-//   const { scene, nodes } = useGLTF(HUMAN_MODEL_CONFIG.availableModels.gltf.path!);
-//   
-//   // 根据bodyParts更新模型材质
-//   // 遍历nodes找到对应的身体部位节点
-//   // 应用伤害颜色和发光效果
-//   
-//   return (
-//     <group scale={HUMAN_MODEL_CONFIG.scale} position={HUMAN_MODEL_CONFIG.offset}>
-//       <primitive object={scene} />
-//     </group>
-//   );
-// };
+const HumanBodyGLTF = ({
+  bodyParts,
+  posture = 'supine',
+  onPartHover,
+  onPartClick,
+  isRunning,
+}: BodyModel3DProps) => {
+  const modelPath = HUMAN_MODEL_CONFIG.availableModels.remote_gltf.path;
+  const { scene } = useGLTF(modelPath);
+  const postureRotation = useMemo(() => {
+    const rot = POSTURE_ROTATIONS[posture];
+    return [rot.x, rot.y, rot.z] as [number, number, number];
+  }, [posture]);
+
+  const bodyPartEntities = useMemo(() => {
+    const entities: Record<BodyPartType, BodyPartEntity3D> = {} as Record<BodyPartType, BodyPartEntity3D>;
+    (Object.keys(bodyParts) as BodyPartType[]).forEach(partId => {
+      const part = bodyParts[partId];
+      const config = BODY_PARTS_3D_CONFIG[partId];
+      entities[partId] = {
+        id: partId,
+        partType: partId,
+        name: part.name,
+        damage: part.damage,
+        pressure: part.pressure,
+        position: config.position,
+        rotation: config.rotation,
+        scale: config.scale,
+        visible: true,
+        opacity: 1,
+        isHighlighted: part.damage >= 50,
+        highlightColor: config.color,
+        geometry: config.geometry as 'sphere' | 'capsule',
+        pulseAnimation: isRunning && part.damage >= 30,
+      };
+    });
+    return entities;
+  }, [bodyParts, isRunning]);
+
+  const [hoveredPart, setHoveredPart] = useState<BodyPartType | null>(null);
+  const clonedScene = useMemo(() => scene.clone(true), [scene]);
+
+  return (
+    <group position={[0, 0.08, 0]} rotation={postureRotation}>
+      <group scale={HUMAN_MODEL_CONFIG.scale} position={HUMAN_MODEL_CONFIG.offset}>
+        <primitive object={clonedScene} />
+      </group>
+      {(Object.keys(bodyPartEntities) as BodyPartType[]).map(partId => (
+        <BodyPartMesh
+          key={partId}
+          entity={bodyPartEntities[partId]}
+          isHovered={hoveredPart === partId}
+          onHover={(hovered) => {
+            const nextPart = hovered ? partId : null;
+            setHoveredPart(nextPart);
+            onPartHover?.(nextPart);
+          }}
+          onClick={() => {
+            onPartClick?.(partId);
+          }}
+          isRunning={isRunning}
+        />
+      ))}
+    </group>
+  );
+};
 
 /**
  * 人体模型容器 - 根据配置选择渲染方式
@@ -340,14 +385,13 @@ const HumanBody = (props: BodyModel3DProps) => {
   // 根据配置选择模型类型
   const modelType = HUMAN_MODEL_CONFIG.currentModel;
 
-  // 未来可根据 modelType 切换不同的模型组件
-  // if (modelType === 'gltf') {
-  //   return (
-  //     <Suspense fallback={<Html center>加载模型中...</Html>}>
-  //       <HumanBodyGLTF {...props} />
-  //     </Suspense>
-  //   );
-  // }
+  if (modelType === 'remote_gltf') {
+    return (
+      <Suspense fallback={<Html center>在线加载人体模型中...</Html>}>
+        <HumanBodyGLTF {...props} />
+      </Suspense>
+    );
+  }
 
   return <HumanBodyPrimitive {...props} />;
 };
