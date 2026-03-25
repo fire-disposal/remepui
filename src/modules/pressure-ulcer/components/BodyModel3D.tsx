@@ -322,7 +322,8 @@ const HumanBodyGLTF = ({
   const { scene } = useGLTF(modelPath);
   const postureRotation = useMemo(() => {
     const rot = POSTURE_ROTATIONS[posture];
-    return [rot.x, rot.y, rot.z] as [number, number, number];
+    const [baseX, baseY, baseZ] = HUMAN_MODEL_CONFIG.remoteRotation;
+    return [rot.x + baseX, rot.y + baseY, rot.z + baseZ] as [number, number, number];
   }, [posture]);
 
   const bodyPartEntities = useMemo(() => {
@@ -338,12 +339,13 @@ const HumanBodyGLTF = ({
         pressure: part.pressure,
         position: config.position,
         rotation: config.rotation,
-        scale: config.scale,
+        // 远程模型模式下，压疮点位使用小尺寸热点，避免出现散落的人体部件视觉
+        scale: [0.07, 0.07, 0.07],
         visible: true,
-        opacity: 1,
+        opacity: 0.95,
         isHighlighted: part.damage >= 50,
-        highlightColor: config.color,
-        geometry: config.geometry as 'sphere' | 'capsule',
+        highlightColor: '#60a5fa',
+        geometry: 'sphere',
         pulseAnimation: isRunning && part.damage >= 30,
       };
     });
@@ -351,7 +353,30 @@ const HumanBodyGLTF = ({
   }, [bodyParts, isRunning]);
 
   const [hoveredPart, setHoveredPart] = useState<BodyPartType | null>(null);
-  const clonedScene = useMemo(() => scene.clone(true), [scene]);
+  const clonedScene = useMemo(() => {
+    const cloned = scene.clone(true);
+    cloned.traverse((obj) => {
+      const mesh = obj as THREE.Mesh;
+      if (!mesh.isMesh || !mesh.material) return;
+
+      const sourceMaterial = mesh.material as THREE.MeshStandardMaterial;
+      const material = sourceMaterial.clone();
+      material.color = new THREE.Color('#d1d5db');
+      material.emissive = new THREE.Color('#000000');
+      material.metalness = 0.05;
+      material.roughness = 0.85;
+      material.map = null;
+      material.emissiveMap = null;
+      material.normalMap = null;
+      material.aoMap = null;
+      material.roughnessMap = null;
+      material.metalnessMap = null;
+      mesh.material = material;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+    });
+    return cloned;
+  }, [scene]);
 
   return (
     <group position={[0, 0.08, 0]} rotation={postureRotation}>
