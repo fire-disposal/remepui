@@ -25,3 +25,9 @@ export { UserListPage } from "./users/pages/UserListPage";
 
 // 压力性损伤仿真教学模块
 export { PressureUlcerPage } from "./pressure-ulcer";
+
+// 审计日志模块
+export { AuditLogListPage } from "./audit";
+
+// 角色权限管理模块
+export { RoleListPage } from "./roles";

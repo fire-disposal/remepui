@@ -8,6 +8,8 @@ import { DataPage } from "../modules/data/pages/DataPage";
 import { UserListPage } from "../modules/users/pages/UserListPage";
 import { ShellSettingsPage } from "../modules/settings/pages/ShellSettingsPage";
 import { PressureUlcerPage } from "../modules/pressure-ulcer";
+import { AuditLogListPage } from "../modules/audit";
+import { RoleListPage } from "../modules/roles";
 import { RootComponent } from "./layout/RootComponent";
 import { useAuthStore } from "../shared/store/auth";
 
@@ -147,6 +149,26 @@ const pressureUlcerRoute = new Route({
 });
 
 /**
+ * 审计日志路由 - 需要管理员权限
+ */
+const auditLogsRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: "/audit-logs",
+  component: AuditLogListPage,
+  beforeLoad: checkAdmin,
+});
+
+/**
+ * 角色权限管理路由 - 需要管理员权限
+ */
+const rolesRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: "/roles",
+  component: RoleListPage,
+  beforeLoad: checkAdmin,
+});
+
+/**
  * 404 路由
  */
 const notFoundRoute = new NotFoundRoute({
@@ -190,6 +212,8 @@ const routeTree = rootRoute.addChildren([
   dataRoute,
   settingsRoute,
   pressureUlcerRoute,
+  auditLogsRoute,
+  rolesRoute,
   loginRoute,
 ]);
 

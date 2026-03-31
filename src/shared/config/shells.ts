@@ -22,6 +22,8 @@ import {
   IconStar,
   IconFlame,
   IconHeart,
+  IconClipboardList,
+  IconKey,
 } from "@tabler/icons-react";
 
 // 图标映射表 - 将图标名称映射到 Tabler Icons 组件
@@ -39,6 +41,8 @@ export const ICON_MAP: Record<string, React.ComponentType<{ size?: number | stri
   star: IconStar,
   flame: IconFlame,
   heart: IconHeart,
+  clipboard: IconClipboardList,
+  key: IconKey,
 };
 
 export interface MenuItem {
@@ -144,10 +148,12 @@ export const SHELL_CONFIGS: Record<string, ShellConfig> = {
     menuItems: [
       { id: 'dashboard', label: '仪表板', path: '/', icon: 'home' },
       { id: 'users', label: '用户管理', path: '/users', icon: 'user' },
+      { id: 'roles', label: '角色权限', path: '/roles', icon: 'key' },
       { id: 'patients', label: '患者管理', path: '/patients', icon: 'users' },
       { id: 'devices', label: '设备管理', path: '/devices', icon: 'device' },
       { id: 'bindings', label: '绑定关系', path: '/bindings', icon: 'link' },
       { id: 'data', label: '数据查询', path: '/data', icon: 'chart' },
+      { id: 'audit-logs', label: '审计日志', path: '/audit-logs', icon: 'clipboard' },
       { id: 'settings', label: '外壳设置', path: '/settings/shell', icon: 'palette' },
     ],
   },
