@@ -23,5 +23,11 @@ export { DataPage } from "./data/pages/DataPage";
 // 用户管理模块
 export { UserListPage } from "./users/pages/UserListPage";
 
+// 预警中心模块
+export { AlertCenterPage } from "./alerts/pages/AlertCenterPage";
+
+// 运营报表模块
+export { OperationsReportPage } from "./reports/pages/OperationsReportPage";
+
 // 压力性损伤仿真教学模块
 export { PressureUlcerPage } from "./pressure-ulcer";

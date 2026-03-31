@@ -8,6 +8,8 @@ import { DataPage } from "../modules/data/pages/DataPage";
 import { UserListPage } from "../modules/users/pages/UserListPage";
 import { ShellSettingsPage } from "../modules/settings/pages/ShellSettingsPage";
 import { PressureUlcerPage } from "../modules/pressure-ulcer";
+import { AlertCenterPage } from "../modules/alerts/pages/AlertCenterPage";
+import { OperationsReportPage } from "../modules/reports/pages/OperationsReportPage";
 import { RootComponent } from "./layout/RootComponent";
 import { useAuthStore } from "../shared/store/auth";
 
@@ -115,6 +117,26 @@ const dataRoute = new Route({
 });
 
 /**
+ * 预警中心路由 - 需要认证
+ */
+const alertsRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: "/alerts",
+  component: AlertCenterPage,
+  beforeLoad: checkAuth,
+});
+
+/**
+ * 运营报表路由 - 需要认证
+ */
+const reportsRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: "/reports",
+  component: OperationsReportPage,
+  beforeLoad: checkAuth,
+});
+
+/**
  * 外壳设置路由 - 需要认证
  */
 const settingsRoute = new Route({
@@ -186,6 +208,8 @@ const routeTree = rootRoute.addChildren([
   devicesRoute,
   bindingsRoute,
   dataRoute,
+  alertsRoute,
+  reportsRoute,
   settingsRoute,
   pressureUlcerRoute,
   loginRoute,

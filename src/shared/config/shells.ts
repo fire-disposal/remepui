@@ -22,6 +22,8 @@ import {
   IconStar,
   IconFlame,
   IconHeart,
+  IconBellRinging,
+  IconReportAnalytics,
 } from "@tabler/icons-react";
 
 // 图标映射表 - 将图标名称映射到 Tabler Icons 组件
@@ -39,6 +41,8 @@ export const ICON_MAP: Record<string, React.ComponentType<{ size?: number | stri
   star: IconStar,
   flame: IconFlame,
   heart: IconHeart,
+  bell: IconBellRinging,
+  report: IconReportAnalytics,
 };
 
 export interface MenuItem {
@@ -78,6 +82,8 @@ export const SHELL_CONFIGS: Record<string, ShellConfig> = {
       { id: 'devices', label: '设备管理', path: '/devices', icon: 'device' },
       { id: 'bindings', label: '绑定关系', path: '/bindings', icon: 'link' },
       { id: 'data', label: '数据查询', path: '/data', icon: 'chart' },
+      { id: 'alerts', label: '预警中心', path: '/alerts', icon: 'bell' },
+      { id: 'reports', label: '运营报表', path: '/reports', icon: 'report' },
       { id: 'users', label: '用户管理', path: '/users', icon: 'user' },
       { id: 'settings', label: '外壳设置', path: '/settings/shell', icon: 'palette' },
     ],
@@ -96,6 +102,7 @@ export const SHELL_CONFIGS: Record<string, ShellConfig> = {
       { id: 'devices', label: '设备管理', path: '/devices', icon: 'device' },
       { id: 'bindings', label: '绑定关系', path: '/bindings', icon: 'link' },
       { id: 'data', label: '数据查询', path: '/data', icon: 'chart' },
+      { id: 'alerts', label: '预警中心', path: '/alerts', icon: 'bell' },
       { id: 'settings', label: '外壳设置', path: '/settings/shell', icon: 'palette' },
     ],
   },
@@ -113,6 +120,7 @@ export const SHELL_CONFIGS: Record<string, ShellConfig> = {
       { id: 'patients', label: '患者列表', path: '/patients', icon: 'users' },
       { id: 'bindings', label: '设备绑定', path: '/bindings', icon: 'link' },
       { id: 'data', label: '健康数据', path: '/data', icon: 'chart' },
+      { id: 'alerts', label: '预警中心', path: '/alerts', icon: 'bell' },
       { id: 'settings', label: '外壳设置', path: '/settings/shell', icon: 'palette' },
     ],
   },
@@ -128,6 +136,7 @@ export const SHELL_CONFIGS: Record<string, ShellConfig> = {
     menuItems: [
       { id: 'dashboard', label: '仪表板', path: '/', icon: 'home' },
       { id: 'data', label: '数据查询', path: '/data', icon: 'chart' },
+      { id: 'reports', label: '运营报表', path: '/reports', icon: 'report' },
       { id: 'devices', label: '设备管理', path: '/devices', icon: 'device' },
       { id: 'settings', label: '外壳设置', path: '/settings/shell', icon: 'palette' },
     ],
@@ -148,44 +157,13 @@ export const SHELL_CONFIGS: Record<string, ShellConfig> = {
       { id: 'devices', label: '设备管理', path: '/devices', icon: 'device' },
       { id: 'bindings', label: '绑定关系', path: '/bindings', icon: 'link' },
       { id: 'data', label: '数据查询', path: '/data', icon: 'chart' },
+      { id: 'alerts', label: '预警中心', path: '/alerts', icon: 'bell' },
+      { id: 'reports', label: '运营报表', path: '/reports', icon: 'report' },
       { id: 'settings', label: '外壳设置', path: '/settings/shell', icon: 'palette' },
     ],
   },
 
-  // 外壳 6：简约视图
-  minimal: {
-    id: 'minimal',
-    name: '简约视图',
-    logo: '✨',
-    title: 'Simple View',
-    description: '简约功能视图',
-    primaryColor: 'gray',
-    menuItems: [
-      { id: 'dashboard', label: '首页', path: '/', icon: 'home' },
-      { id: 'patients', label: '患者', path: '/patients', icon: 'users' },
-      { id: 'devices', label: '设备', path: '/devices', icon: 'device' },
-      { id: 'settings', label: '外壳设置', path: '/settings/shell', icon: 'palette' },
-    ],
-  },
-
-  // 外壳 7：橙色主题
-  orange: {
-    id: 'orange',
-    name: '活力视图',
-    logo: '🔥',
-    title: 'Vitality Dashboard',
-    description: '活力健康数据视图',
-    primaryColor: 'orange',
-    menuItems: [
-      { id: 'dashboard', label: '仪表板', path: '/', icon: 'home' },
-      { id: 'patients', label: '患者管理', path: '/patients', icon: 'users' },
-      { id: 'devices', label: '设备管理', path: '/devices', icon: 'device' },
-      { id: 'data', label: '数据查询', path: '/data', icon: 'chart' },
-      { id: 'settings', label: '外壳设置', path: '/settings/shell', icon: 'palette' },
-    ],
-  },
-
-  // 外壳 8：压力性损伤仿真教学
+  // 外壳 6：压力性损伤仿真教学
   'pressure-ulcer': {
     id: 'pressure-ulcer',
     name: '压疮仿真教学',
