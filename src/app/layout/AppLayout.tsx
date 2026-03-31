@@ -225,7 +225,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
                         {user.username}
                       </Text>
                     </Box>
-                    {user.role === "admin" && (
+                    {user.role_name?.toLowerCase() === "admin" && (
                       <Box visibleFrom="sm">
                         <Badge size="xs" color="red" variant="light">
                           管理员

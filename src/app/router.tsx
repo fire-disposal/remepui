@@ -23,6 +23,7 @@ const checkAuth = () => {
 
 /**
  * 管理员权限检查函数
+ * 适配新版 RBAC（使用 role_name 而非 role）
  */
 const checkAdmin = () => {
   const token = useAuthStore.getState().token;
@@ -32,7 +33,8 @@ const checkAdmin = () => {
     throw redirect({ to: "/login" });
   }
   
-  if (user?.role !== "admin") {
+  // 检查 role_name 是否为 admin（适配新 RBAC 结构）
+  if (user?.role_name?.toLowerCase() !== "admin") {
     throw redirect({ to: "/" });
   }
 };

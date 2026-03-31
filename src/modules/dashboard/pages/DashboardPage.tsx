@@ -116,7 +116,7 @@ export const DashboardPage = () => {
           <div>
             <Group gap="sm">
               <Title order={2}>仪表板</Title>
-              {user?.role === "admin" && (
+              {user?.role_name?.toLowerCase() === "admin" && (
                 <Badge
                   variant="light"
                   color="red"

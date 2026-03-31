@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Container,
   Title,
@@ -22,7 +22,6 @@ import {
 } from "@mantine/core";
 import {
   IconPlus,
-  IconSearch,
   IconEdit,
   IconTrash,
   IconUsers,
@@ -30,14 +29,8 @@ import {
   IconShield,
   IconUser,
 } from "@tabler/icons-react";
-import { useUsers, useCreateUser, useDeleteUser } from "../../../shared/api";
+import { useUsers, useCreateUser, useDeleteUser, useRoles } from "../../../shared/api";
 import { notifications } from "@mantine/notifications";
-import { UserRoles, UserStatus } from "../../../shared/api/types";
-
-const ROLE_OPTIONS = [
-  { value: UserRoles.ADMIN, label: "管理员" },
-  { value: UserRoles.USER, label: "普通用户" },
-];
 
 const STATUS_COLORS: Record<string, string> = {
   active: "green",
@@ -53,23 +46,37 @@ const STATUS_LABELS: Record<string, string> = {
 
 /**
  * 用户管理页面
+ * 
+ * 适配新版 RBAC（基于 role_id 和 role_name）
  */
 export const UserListPage = () => {
   const [page, setPage] = useState(1);
-  const [filterRole, setFilterRole] = useState<string | null>(null);
+  const [filterRoleId, setFilterRoleId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
-  // 表单状态
+  // 获取角色列表
+  const { data: rolesData, isLoading: rolesLoading } = useRoles();
+  
+  // 构建角色选项
+  const roleOptions = useMemo(() => {
+    return rolesData?.roles.map(role => ({
+      value: role.id,
+      label: role.name === 'admin' ? '管理员' : 
+             role.name === 'user' ? '普通用户' : role.name,
+    })) || [];
+  }, [rolesData]);
+
+  // 表单状态 - 使用 role_id
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<string>(UserRoles.USER);
+  const [roleId, setRoleId] = useState<string>("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
 
-  // 查询用户列表
+  // 查询用户列表 - 使用 role_id 筛选
   const { data, isLoading, refetch } = useUsers({
-    role: filterRole || undefined,
+    role_id: filterRoleId || undefined,
     status: filterStatus || undefined,
     page,
     page_size: 10,
@@ -95,7 +102,7 @@ export const UserListPage = () => {
       await createMutation.mutateAsync({
         username,
         password,
-        role,
+        role_id: roleId || roleOptions[1]?.value || roleOptions[0]?.value, // 使用 role_id 而非 role
         email: email || undefined,
         phone: phone || undefined,
       });
@@ -139,13 +146,39 @@ export const UserListPage = () => {
   const resetForm = () => {
     setUsername("");
     setPassword("");
-    setRole(UserRoles.USER);
+    setRoleId(roleOptions[1]?.value || roleOptions[0]?.value || "");
     setEmail("");
     setPhone("");
   };
 
   const users = data?.data || [];
   const pagination = data?.pagination;
+
+  /**
+   * 获取角色显示名称
+   */
+  const getRoleDisplayName = (user: typeof users[0]): string => {
+    // 优先使用 role_name
+    if (user.role_name) {
+      return user.role_name === 'admin' ? '管理员' : 
+             user.role_name === 'user' ? '普通用户' : user.role_name;
+    }
+    // 回退：查找 role_id 对应的角色
+    const role = rolesData?.roles.find(r => r.id === user.role_id);
+    if (role) {
+      return role.name === 'admin' ? '管理员' : 
+             role.name === 'user' ? '普通用户' : role.name;
+    }
+    return "未知角色";
+  };
+
+  /**
+   * 检查是否为管理员
+   */
+  const isUserAdmin = (user: typeof users[0]): boolean => {
+    return user.role_name?.toLowerCase() === "admin" || 
+           rolesData?.roles.find(r => r.id === user.role_id)?.name === "admin";
+  };
 
   return (
     <Container size="lg" py="xl">
@@ -183,10 +216,11 @@ export const UserListPage = () => {
           <Group>
             <Select
               placeholder="角色筛选"
-              data={ROLE_OPTIONS}
-              value={filterRole}
-              onChange={setFilterRole}
+              data={roleOptions}
+              value={filterRoleId}
+              onChange={setFilterRoleId}
               clearable
+              disabled={rolesLoading}
               style={{ width: 150 }}
             />
             <Select
@@ -242,15 +276,14 @@ export const UserListPage = () => {
                       <Table.Td>
                         <Badge
                           variant="light"
-                          color={user.role === UserRoles.ADMIN ? "blue" : "gray"}
+                          color={isUserAdmin(user) ? "blue" : "gray"}
                           leftSection={
-                            user.role === UserRoles.ADMIN ? (
+                            isUserAdmin(user) ? (
                               <IconShield size={12} />
                             ) : null
                           }
                         >
-                          {ROLE_OPTIONS.find((r) => r.value === user.role)?.label ||
-                            user.role}
+                          {getRoleDisplayName(user)}
                         </Badge>
                       </Table.Td>
                       <Table.Td>
@@ -351,9 +384,10 @@ export const UserListPage = () => {
           />
           <Select
             label="角色"
-            data={ROLE_OPTIONS}
-            value={role}
-            onChange={(v) => setRole(v || UserRoles.USER)}
+            data={roleOptions}
+            value={roleId}
+            onChange={(v) => setRoleId(v || "")}
+            disabled={rolesLoading}
           />
           <TextInput
             label="邮箱（可选）"

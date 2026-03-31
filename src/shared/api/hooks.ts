@@ -10,6 +10,8 @@ import { patientApi } from "./patient";
 import { deviceApi } from "./device";
 import { bindingApi } from "./binding";
 import { dataApi } from "./data";
+import { roleApi, permissionApi } from "./role";
+import { auditApi } from "./audit";
 import type {
   LoginRequest,
   CreateUserRequest,
@@ -26,6 +28,11 @@ import type {
   DataQuery,
   DataReportRequest,
   ChangePasswordRequest,
+  CreateRoleRequest,
+  UpdateRoleRequest,
+  RoleQuery,
+  AssignPermissionRequest,
+  AuditLogQuery,
 } from "./types";
 
 // ==================== Query Keys ====================
@@ -40,6 +47,11 @@ export const queryKeys = {
   device: (id: string) => ["device", id] as const,
   bindings: (query?: BindingQuery) => ["bindings", query] as const,
   data: (query?: DataQuery) => ["data", query] as const,
+  roles: (query?: RoleQuery) => ["roles", query] as const,
+  role: (id: string) => ["role", id] as const,
+  permissions: () => ["permissions"] as const,
+  auditLogs: (query?: AuditLogQuery) => ["audit-logs", query] as const,
+  auditLog: (id: string) => ["audit-log", id] as const,
 };
 
 // ==================== Auth Hooks ====================
@@ -279,5 +291,110 @@ export function useReportData() {
         });
       }
     },
+  });
+}
+
+// ==================== Role Hooks ====================
+
+export function useRoles(query?: RoleQuery) {
+  return useQuery({
+    queryKey: queryKeys.roles(query),
+    queryFn: () => roleApi.list(query),
+  });
+}
+
+export function useRole(id: string) {
+  return useQuery({
+    queryKey: queryKeys.role(id),
+    queryFn: () => roleApi.get(id),
+    enabled: !!id,
+  });
+}
+
+export function useCreateRole() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateRoleRequest) => roleApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["roles"] });
+    },
+  });
+}
+
+export function useUpdateRole() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateRoleRequest }) =>
+      roleApi.update(id, data),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.role(id) });
+      queryClient.invalidateQueries({ queryKey: ["roles"] });
+    },
+  });
+}
+
+export function useDeleteRole() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => roleApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["roles"] });
+    },
+  });
+}
+
+export function useRolePermissions(id: string) {
+  return useQuery({
+    queryKey: ["role-permissions", id],
+    queryFn: () => roleApi.getPermissions(id),
+    enabled: !!id,
+  });
+}
+
+export function useAssignPermission() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: AssignPermissionRequest }) =>
+      roleApi.assignPermission(id, data),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ["role-permissions", id] });
+    },
+  });
+}
+
+export function useRevokePermission() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, permissionId }: { id: string; permissionId: string }) =>
+      roleApi.revokePermission(id, permissionId),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ["role-permissions", id] });
+    },
+  });
+}
+
+// ==================== Permission Hooks ====================
+
+export function usePermissions() {
+  return useQuery({
+    queryKey: queryKeys.permissions(),
+    queryFn: () => permissionApi.list(),
+  });
+}
+
+// ==================== Audit Log Hooks ====================
+
+export function useAuditLogs(query?: AuditLogQuery) {
+  return useQuery({
+    queryKey: queryKeys.auditLogs(query),
+    queryFn: () => auditApi.list(query),
+  });
+}
+
+export function useAuditLog(id: string) {
+  return useQuery({
+    queryKey: queryKeys.auditLog(id),
+    queryFn: () => auditApi.get(id),
+    enabled: !!id,
   });
 }

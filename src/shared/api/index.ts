@@ -15,6 +15,8 @@ export { patientApi } from "./patient";
 export { deviceApi } from "./device";
 export { bindingApi } from "./binding";
 export { dataApi } from "./data";
+export { roleApi, permissionApi, isAdmin, hasRoleName, hasRoleId } from "./role";
+export { auditApi } from "./audit";
 
 // React Query hooks
 export * from "./hooks";

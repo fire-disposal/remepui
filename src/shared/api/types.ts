@@ -55,7 +55,12 @@ export interface LogoutRequest {
 export interface UserInfo {
   id: string;
   username: string;
-  role: string;
+  role_id: string;
+  role_name: string;
+  status: string;
+  email?: string;
+  last_login_at?: string;
+  created_at: string;
 }
 
 // ==================== 用户相关 ====================
@@ -63,7 +68,8 @@ export interface UserInfo {
 export interface User {
   id: string;
   username: string;
-  role: string;
+  role_id: string;
+  role_name: string;
   phone?: string;
   email?: string;
   avatar_url?: string;
@@ -75,7 +81,7 @@ export interface User {
 export interface CreateUserRequest {
   username: string;
   password: string;
-  role?: string;
+  role_id: string;
   phone?: string;
   email?: string;
 }
@@ -89,7 +95,7 @@ export interface UpdateUserRequest {
 
 export interface UserQuery {
   username?: string;
-  role?: string;
+  role_id?: string;
   status?: string;
   page?: number;
   page_size?: number;
@@ -288,3 +294,93 @@ export const UserStatus = {
   INACTIVE: 'inactive',
   LOCKED: 'locked',
 } as const;
+
+// ==================== 角色相关 ====================
+
+export interface Role {
+  id: string;
+  name: string;
+  description?: string | null;
+  is_system: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateRoleRequest {
+  name: string;
+  description?: string | null;
+}
+
+export interface UpdateRoleRequest {
+  name?: string | null;
+  description?: string | null;
+}
+
+export interface RoleQuery {
+  name?: string;
+  page?: number;
+  page_size?: number;
+}
+
+export interface RoleListResponse {
+  roles: Role[];
+  total: number;
+}
+
+export interface RolePermissionResponse {
+  role_id: string;
+  permissions: Permission[];
+}
+
+export interface AssignPermissionRequest {
+  permission_id: string;
+}
+
+// ==================== 权限相关 ====================
+
+export interface Permission {
+  id: string;
+  resource: string;
+  action: string;
+  description?: string | null;
+  created_at: string;
+}
+
+export interface PermissionListResponse {
+  permissions: Permission[];
+}
+
+// ==================== 审计日志相关 ====================
+
+export interface AuditLog {
+  id: string;
+  action: string;
+  resource: string;
+  details: Record<string, unknown>;
+  status: string;
+  created_at: string;
+  user_id?: string | null;
+  resource_id?: string | null;
+  ip_address?: string | null;
+  user_agent?: string | null;
+  error_message?: string | null;
+  duration_ms?: number | null;
+}
+
+export interface AuditLogListResponse {
+  logs: AuditLog[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface AuditLogQuery {
+  user_id?: string;
+  action?: string;
+  resource?: string;
+  status?: string;
+  start_time?: string;
+  end_time?: string;
+  page?: number;
+  page_size?: number;
+}
