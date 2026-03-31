@@ -21,6 +21,8 @@ import {
   JsonInput,
   Timeline,
   ThemeIcon,
+  Alert,
+  Button,
 } from "@mantine/core";
 import {
   IconClipboardList,
@@ -33,8 +35,11 @@ import {
   IconUser,
   IconServer,
   IconActivity,
+  IconShieldOff,
 } from "@tabler/icons-react";
+import { useNavigate } from "@tanstack/react-router";
 import { useAuditLogs, useAuditLog } from "../../../shared/api";
+import { useAuthStore } from "../../../shared/store/auth";
 import { notifications } from "@mantine/notifications";
 import type { AuditLog } from "../../../shared/api";
 
@@ -79,6 +84,31 @@ const RESOURCE_LABELS: Record<string, string> = {
  * 管理员查看系统操作日志
  */
 export const AuditLogListPage = () => {
+  const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
+  
+  // 权限检查：仅管理员可访问
+  const isAdmin = user?.role_name?.toLowerCase() === "admin";
+  
+  if (!isAdmin) {
+    return (
+      <Container size="md" py="xl">
+        <Alert
+          icon={<IconShieldOff size={24} />}
+          title="权限不足"
+          color="red"
+          variant="filled"
+        >
+          <Stack gap="md">
+            <Text>您没有权限访问审计日志页面，此功能仅对管理员开放。</Text>
+            <Button onClick={() => navigate({ to: "/" })} variant="white" color="red">
+              返回首页
+            </Button>
+          </Stack>
+        </Alert>
+      </Container>
+    );
+  }
   const [page, setPage] = useState(1);
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
   const [filterResource, setFilterResource] = useState<string | null>(null);

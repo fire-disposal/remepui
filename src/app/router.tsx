@@ -149,23 +149,23 @@ const pressureUlcerRoute = new Route({
 });
 
 /**
- * 审计日志路由 - 需要管理员权限
+ * 审计日志路由 - 权限检查在页面内处理
  */
 const auditLogsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: "/audit-logs",
   component: AuditLogListPage,
-  beforeLoad: checkAdmin,
+  beforeLoad: checkAuth,
 });
 
 /**
- * 角色权限管理路由 - 需要管理员权限
+ * 角色权限管理路由 - 权限检查在页面内处理
  */
 const rolesRoute = new Route({
   getParentRoute: () => rootRoute,
   path: "/roles",
   component: RoleListPage,
-  beforeLoad: checkAdmin,
+  beforeLoad: checkAuth,
 });
 
 /**

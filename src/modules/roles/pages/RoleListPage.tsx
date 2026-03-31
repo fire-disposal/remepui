@@ -38,7 +38,9 @@ import {
   IconLock,
   IconUserShield,
   IconAlertCircle,
+  IconShieldOff,
 } from "@tabler/icons-react";
+import { useNavigate } from "@tanstack/react-router";
 import {
   useRoles,
   useCreateRole,
@@ -49,6 +51,7 @@ import {
   useAssignPermission,
   useRevokePermission,
 } from "../../../shared/api";
+import { useAuthStore } from "../../../shared/store/auth";
 import { notifications } from "@mantine/notifications";
 import type { Role, Permission } from "../../../shared/api";
 
@@ -57,6 +60,31 @@ import type { Role, Permission } from "../../../shared/api";
  * 管理员管理角色和分配权限
  */
 export const RoleListPage = () => {
+  const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
+  
+  // 权限检查：仅管理员可访问
+  const isAdmin = user?.role_name?.toLowerCase() === "admin";
+  
+  if (!isAdmin) {
+    return (
+      <Container size="md" py="xl">
+        <Alert
+          icon={<IconShieldOff size={24} />}
+          title="权限不足"
+          color="red"
+          variant="filled"
+        >
+          <Stack gap="md">
+            <Text>您没有权限访问角色权限管理页面，此功能仅对管理员开放。</Text>
+            <Button onClick={() => navigate({ to: "/" })} variant="white" color="red">
+              返回首页
+            </Button>
+          </Stack>
+        </Alert>
+      </Container>
+    );
+  }
   const [page, setPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);

@@ -66,11 +66,12 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
   const isLoginPage = location.pathname === "/login";
 
   // 刷新或手动输入 URL 时，确保页面路径属于当前外壳
+  // 注意：使用 user?.id 代替 user 作为依赖，避免对象引用变化导致的重复触发
   useEffect(() => {
     if (!isLoginPage && token && user && !isPathAllowed && !isTransitioning) {
       navigate({ to: fallbackPath, replace: true });
     }
-  }, [fallbackPath, isLoginPage, isPathAllowed, isTransitioning, navigate, token, user]);
+  }, [fallbackPath, isLoginPage, isPathAllowed, isTransitioning, navigate, token, user?.id]);
 
   // 切换外壳后，移动端自动收起导航
   useEffect(() => {
