@@ -10,7 +10,6 @@ import {
   Group,
   TextInput,
   Modal,
-  Box,
   Badge,
   ActionIcon,
   Tooltip,
@@ -27,7 +26,12 @@ import {
   IconUser,
   IconRefresh,
 } from "@tabler/icons-react";
-import { usePatients, useCreatePatient, useDeletePatient } from "../../../shared/api";
+import {
+  usePatients,
+  useCreatePatient,
+  useDeletePatient,
+  useUpdatePatient,
+} from "../../../shared/api";
 import { notifications } from "@mantine/notifications";
 
 /**
@@ -37,8 +41,12 @@ export const PatientListPage = () => {
   const [page, setPage] = useState(1);
   const [searchName, setSearchName] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const [newPatientName, setNewPatientName] = useState("");
   const [newPatientExternalId, setNewPatientExternalId] = useState("");
+  const [editingPatientId, setEditingPatientId] = useState<string | null>(null);
+  const [editingPatientName, setEditingPatientName] = useState("");
+  const [editingPatientExternalId, setEditingPatientExternalId] = useState("");
 
   // 查询患者列表
   const { data, isLoading, refetch } = usePatients({
@@ -52,6 +60,7 @@ export const PatientListPage = () => {
 
   // 删除患者
   const deleteMutation = useDeletePatient();
+  const updateMutation = useUpdatePatient();
 
   const handleCreatePatient = async () => {
     if (!newPatientName.trim()) {
@@ -106,6 +115,52 @@ export const PatientListPage = () => {
     }
   };
 
+  const handleOpenEditPatient = (id: string, name: string, externalId?: string) => {
+    setEditingPatientId(id);
+    setEditingPatientName(name);
+    setEditingPatientExternalId(externalId || "");
+    setEditModalOpen(true);
+  };
+
+  const handleUpdatePatient = async () => {
+    if (!editingPatientId) {
+      return;
+    }
+    if (!editingPatientName.trim()) {
+      notifications.show({
+        title: "错误",
+        message: "请输入患者姓名",
+        color: "red",
+      });
+      return;
+    }
+
+    try {
+      await updateMutation.mutateAsync({
+        id: editingPatientId,
+        data: {
+          name: editingPatientName.trim(),
+          external_id: editingPatientExternalId.trim() || undefined,
+        },
+      });
+      notifications.show({
+        title: "成功",
+        message: "患者信息更新成功",
+        color: "green",
+      });
+      setEditModalOpen(false);
+      setEditingPatientId(null);
+      setEditingPatientName("");
+      setEditingPatientExternalId("");
+    } catch (error) {
+      notifications.show({
+        title: "错误",
+        message: error instanceof Error ? error.message : "更新失败",
+        color: "red",
+      });
+    }
+  };
+
   const patients = data?.data || [];
   const pagination = data?.pagination;
 
@@ -147,7 +202,10 @@ export const PatientListPage = () => {
               placeholder="搜索患者姓名..."
               leftSection={<IconSearch size={16} />}
               value={searchName}
-              onChange={(e) => setSearchName(e.currentTarget.value)}
+              onChange={(e) => {
+                setSearchName(e.currentTarget.value);
+                setPage(1);
+              }}
               style={{ flex: 1 }}
             />
           </Group>
@@ -207,7 +265,11 @@ export const PatientListPage = () => {
                       <Table.Td>
                         <Group justify="flex-end" gap="xs">
                           <Tooltip label="编辑">
-                            <ActionIcon variant="subtle" color="blue">
+                            <ActionIcon
+                              variant="subtle"
+                              color="blue"
+                              onClick={() => handleOpenEditPatient(patient.id, patient.name, patient.external_id)}
+                            >
                               <IconEdit size={16} />
                             </ActionIcon>
                           </Tooltip>
@@ -268,6 +330,42 @@ export const PatientListPage = () => {
             </Button>
             <Button onClick={handleCreatePatient} loading={createMutation.isPending}>
               创建
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* 编辑患者弹窗 */}
+      <Modal
+        opened={editModalOpen}
+        onClose={() => {
+          setEditModalOpen(false);
+          setEditingPatientId(null);
+          setEditingPatientName("");
+          setEditingPatientExternalId("");
+        }}
+        title="编辑患者信息"
+      >
+        <Stack gap="md">
+          <TextInput
+            label="患者姓名"
+            placeholder="请输入患者姓名"
+            required
+            value={editingPatientName}
+            onChange={(e) => setEditingPatientName(e.currentTarget.value)}
+          />
+          <TextInput
+            label="外部ID（可选）"
+            placeholder="如医院系统ID等"
+            value={editingPatientExternalId}
+            onChange={(e) => setEditingPatientExternalId(e.currentTarget.value)}
+          />
+          <Group justify="flex-end" mt="md">
+            <Button variant="subtle" onClick={() => setEditModalOpen(false)}>
+              取消
+            </Button>
+            <Button onClick={handleUpdatePatient} loading={updateMutation.isPending}>
+              保存
             </Button>
           </Group>
         </Stack>

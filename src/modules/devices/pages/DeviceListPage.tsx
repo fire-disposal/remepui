@@ -29,7 +29,14 @@ import {
   IconRefresh,
   IconLink,
 } from "@tabler/icons-react";
-import { useDevices, useRegisterDevice, useDeleteDevice, usePatients, useCreateBinding } from "../../../shared/api";
+import {
+  useDevices,
+  useRegisterDevice,
+  useDeleteDevice,
+  usePatients,
+  useCreateBinding,
+  useUpdateDevice,
+} from "../../../shared/api";
 import { notifications } from "@mantine/notifications";
 import { DeviceTypes, DeviceStatus } from "../../../shared/api/types";
 
@@ -61,6 +68,7 @@ export const DeviceListPage = () => {
   const [filterType, setFilterType] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const [bindModalOpen, setBindModalOpen] = useState(false);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
@@ -69,6 +77,9 @@ export const DeviceListPage = () => {
   const [serialNumber, setSerialNumber] = useState("");
   const [deviceType, setDeviceType] = useState<string | null>(null);
   const [firmwareVersion, setFirmwareVersion] = useState("");
+  const [editingDeviceId, setEditingDeviceId] = useState<string | null>(null);
+  const [editingFirmwareVersion, setEditingFirmwareVersion] = useState("");
+  const [editingStatus, setEditingStatus] = useState<string | null>(null);
 
   // 查询设备列表
   const { data, isLoading, refetch } = useDevices({
@@ -87,6 +98,7 @@ export const DeviceListPage = () => {
 
   // 删除设备
   const deleteMutation = useDeleteDevice();
+  const updateMutation = useUpdateDevice();
 
   // 创建绑定
   const bindMutation = useCreateBinding();
@@ -150,6 +162,49 @@ export const DeviceListPage = () => {
     setSelectedDeviceId(deviceId);
     setSelectedPatientId(null);
     setBindModalOpen(true);
+  };
+
+  const handleOpenEditDevice = (id: string, status: string, firmware?: string) => {
+    setEditingDeviceId(id);
+    setEditingStatus(status);
+    setEditingFirmwareVersion(firmware || "");
+    setEditModalOpen(true);
+  };
+
+  const handleUpdateDevice = async () => {
+    if (!editingDeviceId || !editingStatus) {
+      notifications.show({
+        title: "错误",
+        message: "请完整填写更新信息",
+        color: "red",
+      });
+      return;
+    }
+
+    try {
+      await updateMutation.mutateAsync({
+        id: editingDeviceId,
+        data: {
+          status: editingStatus,
+          firmware_version: editingFirmwareVersion.trim() || undefined,
+        },
+      });
+      notifications.show({
+        title: "成功",
+        message: "设备信息更新成功",
+        color: "green",
+      });
+      setEditModalOpen(false);
+      setEditingDeviceId(null);
+      setEditingStatus(null);
+      setEditingFirmwareVersion("");
+    } catch (error) {
+      notifications.show({
+        title: "错误",
+        message: error instanceof Error ? error.message : "更新失败",
+        color: "red",
+      });
+    }
   };
 
   const handleConfirmBind = async () => {
@@ -230,14 +285,20 @@ export const DeviceListPage = () => {
               placeholder="搜索序列号..."
               leftSection={<IconSearch size={16} />}
               value={searchSerial}
-              onChange={(e) => setSearchSerial(e.currentTarget.value)}
+              onChange={(e) => {
+                setSearchSerial(e.currentTarget.value);
+                setPage(1);
+              }}
               style={{ flex: 1 }}
             />
             <Select
               placeholder="设备类型"
               data={DEVICE_TYPE_OPTIONS}
               value={filterType}
-              onChange={setFilterType}
+              onChange={(value) => {
+                setFilterType(value);
+                setPage(1);
+              }}
               clearable
               style={{ width: 180 }}
             />
@@ -249,7 +310,10 @@ export const DeviceListPage = () => {
                 { value: "maintenance", label: "维护中" },
               ]}
               value={filterStatus}
-              onChange={setFilterStatus}
+              onChange={(value) => {
+                setFilterStatus(value);
+                setPage(1);
+              }}
               clearable
               style={{ width: 120 }}
             />
@@ -339,7 +403,17 @@ export const DeviceListPage = () => {
                             </Tooltip>
                           )}
                           <Tooltip label="编辑">
-                            <ActionIcon variant="subtle" color="blue">
+                            <ActionIcon
+                              variant="subtle"
+                              color="blue"
+                              onClick={() =>
+                                handleOpenEditDevice(
+                                  device.id,
+                                  device.status,
+                                  device.firmware_version,
+                                )
+                              }
+                            >
                               <IconEdit size={16} />
                             </ActionIcon>
                           </Tooltip>
@@ -446,6 +520,47 @@ export const DeviceListPage = () => {
               disabled={!selectedPatientId}
             >
               确认绑定
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* 编辑设备弹窗 */}
+      <Modal
+        opened={editModalOpen}
+        onClose={() => {
+          setEditModalOpen(false);
+          setEditingDeviceId(null);
+          setEditingStatus(null);
+          setEditingFirmwareVersion("");
+        }}
+        title="编辑设备"
+      >
+        <Stack gap="md">
+          <Select
+            label="设备状态"
+            placeholder="请选择设备状态"
+            data={[
+              { value: DeviceStatus.ACTIVE, label: "活跃" },
+              { value: DeviceStatus.INACTIVE, label: "未激活" },
+              { value: DeviceStatus.MAINTENANCE, label: "维护中" },
+            ]}
+            value={editingStatus}
+            onChange={setEditingStatus}
+            required
+          />
+          <TextInput
+            label="固件版本（可选）"
+            placeholder="如 v1.2.0"
+            value={editingFirmwareVersion}
+            onChange={(e) => setEditingFirmwareVersion(e.currentTarget.value)}
+          />
+          <Group justify="flex-end" mt="md">
+            <Button variant="subtle" onClick={() => setEditModalOpen(false)}>
+              取消
+            </Button>
+            <Button onClick={handleUpdateDevice} loading={updateMutation.isPending}>
+              保存
             </Button>
           </Group>
         </Stack>
