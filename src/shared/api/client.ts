@@ -6,6 +6,7 @@ import axios, {
 } from "axios";
 import { logger } from "../logger";
 import { useAuthStore } from "../store/auth";
+import { showTokenExpiredDialog } from "../store/tokenExpired";
 import { getRefreshToken, setRefreshToken, clearRefreshToken } from "./auth";
 
 // 后端 API 地址 - 开发环境使用相对路径走 Vite 代理，生产环境使用完整 URL
@@ -120,8 +121,12 @@ function createApiClient(): AxiosInstance {
         const refreshToken = getRefreshToken();
         
         if (!refreshToken) {
-          // 没有 refresh token，直接登出
+          // 没有 refresh token，显示弹窗并登出
           isRefreshing = false;
+          showTokenExpiredDialog(
+            '会话已过期',
+            '您的登录状态已过期，请重新登录。'
+          );
           useAuthStore.getState().logout();
           return Promise.reject(error);
         }
@@ -147,11 +152,18 @@ function createApiClient(): AxiosInstance {
           originalRequest.headers.Authorization = `Bearer ${access_token}`;
           return client(originalRequest);
         } catch (refreshError) {
-          // 刷新失败，登出
-          processQueue(refreshError, null);
-          clearRefreshToken();
-          useAuthStore.getState().logout();
-          return Promise.reject(refreshError);
+        // 刷新失败，检查是否是 JWT 格式变更
+        processQueue(refreshError, null);
+        clearRefreshToken();
+        useAuthStore.getState().logout();
+        
+        // 显示重新登录提示
+        showTokenExpiredDialog(
+          '系统权限架构已更新',
+          '您的登录会话已过期，请重新登录以使用新功能。'
+        );
+        
+        return Promise.reject(refreshError);
         } finally {
           isRefreshing = false;
         }

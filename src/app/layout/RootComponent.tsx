@@ -3,6 +3,7 @@ import { Outlet } from '@tanstack/react-router';
 import { AppLayout } from './AppLayout';
 import { useAuthStore } from '../../shared/store/auth';
 import { useShellStore } from '../../shared/store/shell';
+import { TokenExpiredModal } from '../../shared/components/TokenExpiredModal';
 
 /**
  * 根路由组件
@@ -20,6 +21,7 @@ export function RootComponent() {
   return (
     <AppLayout>
       <Outlet />
+      <TokenExpiredModal />
     </AppLayout>
   );
 }
