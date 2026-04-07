@@ -18,12 +18,13 @@ import {
   ScrollArea,
 } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
-import { IconLogout, IconSwitch, IconSettings, IconUser, IconCheck } from "@tabler/icons-react";
+import { IconLogout, IconSwitch, IconSettings, IconUser, IconCheck, IconLock } from "@tabler/icons-react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { useAuthStore } from "../../shared/store/auth";
 import { useShellStore } from "../../shared/store/shell";
 import { useAuth } from "../../shared/hooks/useAuth";
 import { getShellOptions, SHELL_CONFIGS, ICON_MAP } from "../../shared/config/shells";
+import { canAccessModule } from "../../shared/lib/permissions";
 import { logger } from "../../shared/logger";
 
 interface AppLayoutProps {
@@ -225,7 +226,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
                         {user.username}
                       </Text>
                     </Box>
-                    {user.role_name?.toLowerCase() === "admin" && (
+                    {user.is_system_role && (
                       <Box visibleFrom="sm">
                         <Badge size="xs" color="red" variant="light">
                           管理员
@@ -283,16 +284,24 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
                 <Stack gap="xs" style={styles}>
                   {currentShell.menuItems.map((item) => {
                     const IconComponent = item.icon ? ICON_MAP[item.icon] : null;
+                    const hasAccess = canAccessModule(user, item.module);
+                    
                     return (
                       <NavLink
                         key={item.id}
                         label={item.label}
                         leftSection={IconComponent ? <IconComponent size={isMobile ? 16 : 20} /> : null}
-                        onClick={() => handleNavigate(item.path)}
+                        rightSection={!hasAccess ? <IconLock size={14} color="gray" /> : null}
+                        onClick={() => hasAccess && handleNavigate(item.path)}
                         active={location.pathname === item.path}
-                        style={{ cursor: "pointer", borderRadius: "6px" }}
+                        disabled={!hasAccess}
+                        style={{ 
+                          cursor: hasAccess ? "pointer" : "not-allowed", 
+                          borderRadius: "6px",
+                          opacity: hasAccess ? 1 : 0.5,
+                        }}
                         variant="light"
-                        color={theme.primaryColor}
+                        color={hasAccess ? theme.primaryColor : "gray"}
                       />
                     );
                   })}

@@ -1,33 +1,42 @@
 import { type ReactNode } from "react";
 import { useAuthStore } from "../store/auth";
-import { isAdmin, hasRoleName, hasRoleId } from "../api/role";
+import { canAccessModule, isSystemRole } from "../lib/permissions";
+import type { ModuleCode } from "../api/types";
 
-interface PermissionGuardProps {
-  /** 允许的角色名称列表（如 ["admin", "manager"]） */
-  roles?: string[];
-  /** 允许的角色 ID 列表 */
-  roleIds?: string[];
-  /** 是否需要管理员权限 */
-  admin?: boolean;
+interface ModuleGuardProps {
+  /** 模块代码 */
+  module: ModuleCode | string;
   /** 有权限时显示的内容 */
   children: ReactNode;
-  /** 无权限时显示的内容 */
+  /** 无权限时显示的内容（可选） */
   fallback?: ReactNode;
+  /** 是否以禁用状态显示（而非隐藏） */
+  disabled?: boolean;
 }
 
 /**
- * 权限守卫组件
- * 根据用户角色控制内容显示
+ * 模块权限守卫组件
+ * 根据用户模块权限控制内容显示
  * 
- * 适配新版 RBAC（基于 role_id 和 role_name）
+ * 使用示例：
+ * ```tsx
+ * // 仅对 patients 模块有权限的用户可见
+ * <ModuleGuard module="patients">
+ *   <PatientPanel />
+ * </ModuleGuard>
+ * 
+ * // 无权限时显示占位符
+ * <ModuleGuard module="users" fallback={<Locked />}>
+ *   <UserPanel />
+ * </ModuleGuard>
+ * ```
  */
-export function PermissionGuard({ 
-  roles, 
-  roleIds,
-  admin = false, 
+export function ModuleGuard({ 
+  module,
   children, 
-  fallback = null 
-}: PermissionGuardProps) {
+  fallback = null,
+  disabled = false,
+}: ModuleGuardProps) {
   const user = useAuthStore((state) => state.user);
 
   // 未登录
@@ -35,18 +44,10 @@ export function PermissionGuard({
     return <>{fallback}</>;
   }
 
-  // 检查管理员权限
-  if (admin && !isAdmin(user)) {
-    return <>{fallback}</>;
-  }
+  // 检查模块权限
+  const hasAccess = canAccessModule(user, module);
 
-  // 检查角色名称权限
-  if (roles && !roles.some(role => hasRoleName(user, role))) {
-    return <>{fallback}</>;
-  }
-
-  // 检查角色 ID 权限
-  if (roleIds && !roleIds.some(roleId => hasRoleId(user, roleId))) {
+  if (!hasAccess) {
     return <>{fallback}</>;
   }
 
@@ -54,41 +55,43 @@ export function PermissionGuard({
 }
 
 /**
- * 检查用户是否有指定权限
- * 适配新版 RBAC 结构
+ * 系统角色守卫组件
+ * 仅系统角色（拥有通配权限）可见
+ */
+interface SystemRoleGuardProps {
+  children: ReactNode;
+  fallback?: ReactNode;
+}
+
+export function SystemRoleGuard({ 
+  children, 
+  fallback = null 
+}: SystemRoleGuardProps) {
+  const user = useAuthStore((state) => state.user);
+
+  if (!user || !isSystemRole(user)) {
+    return <>{fallback}</>;
+  }
+
+  return <>{children}</>;
+}
+
+/**
+ * 检查用户是否有指定模块权限
+ * 
+ * 返回包含各种权限检查方法的 hooks
  */
 export function usePermission() {
   const user = useAuthStore((state) => state.user);
 
-  const userIsAdmin = isAdmin(user);
+  const userIsSystemRole = isSystemRole(user);
   const isAuthenticated = !!user;
 
   /**
-   * 检查是否具有指定角色名称
+   * 检查是否具有指定模块权限
    */
-  const hasRole = (role: string): boolean => {
-    return hasRoleName(user, role);
-  };
-
-  /**
-   * 检查是否具有任意指定角色名称
-   */
-  const hasAnyRole = (roles: string[]): boolean => {
-    return roles.some(role => hasRoleName(user, role));
-  };
-
-  /**
-   * 检查是否具有指定角色 ID
-   */
-  const hasRoleById = (roleId: string): boolean => {
-    return hasRoleId(user, roleId);
-  };
-
-  /**
-   * 检查是否具有任意指定角色 ID
-   */
-  const hasAnyRoleById = (roleIds: string[]): boolean => {
-    return roleIds.some(roleId => hasRoleId(user, roleId));
+  const canAccess = (module: ModuleCode | string): boolean => {
+    return canAccessModule(user, module);
   };
 
   /**
@@ -99,17 +102,17 @@ export function usePermission() {
     return {
       id: user.role_id,
       name: user.role_name,
+      isSystemRole: user.is_system_role,
+      accessibleModules: user.accessible_modules,
     };
   };
 
   return {
-    isAdmin: userIsAdmin,
+    isSystemRole: userIsSystemRole,
     isAuthenticated,
-    hasRole,
-    hasAnyRole,
-    hasRoleById,
-    hasAnyRoleById,
+    canAccess,
     getRoleInfo,
     user,
+    accessibleModules: user?.accessible_modules ?? [],
   };
 }

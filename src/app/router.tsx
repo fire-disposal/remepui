@@ -10,11 +10,37 @@ import { ShellSettingsPage } from "../modules/settings/pages/ShellSettingsPage";
 import { PressureUlcerPage } from "../modules/pressure-ulcer";
 import { RootComponent } from "./layout/RootComponent";
 import { useAuthStore } from "../shared/store/auth";
+import { canAccessModule } from "../shared/lib/permissions";
+import type { ModuleCode } from "../shared/api/types";
+
+/**
+ * 等待认证状态恢复（hydrate）
+ * 路由守卫中使用，确保在检查权限前 store 已恢复
+ */
+const waitForAuthHydration = async (): Promise<void> => {
+  return new Promise((resolve) => {
+    const checkHydration = () => {
+      const state = useAuthStore.getState();
+      // 如果 loading 为 false，说明 hydrate 已完成
+      if (!state.loading) {
+        resolve();
+      } else {
+        // 轮询检查，每 50ms 检查一次
+        setTimeout(checkHydration, 50);
+      }
+    };
+    checkHydration();
+  });
+};
 
 /**
  * 认证检查函数
+ * 确保用户已登录，如果未登录则重定向到登录页
  */
-const checkAuth = () => {
+const checkAuth = async () => {
+  // 等待 hydration 完成
+  await waitForAuthHydration();
+  
   const token = useAuthStore.getState().token;
   if (!token) {
     throw redirect({ to: "/login" });
@@ -22,27 +48,55 @@ const checkAuth = () => {
 };
 
 /**
- * 管理员权限检查函数
- * 适配新版 RBAC（使用 role_name 而非 role）
+ * 模块权限检查函数
+ * 确保用户有权限访问指定模块
  */
-const checkAdmin = () => {
-  const token = useAuthStore.getState().token;
-  const user = useAuthStore.getState().user;
+const checkModuleAccess = (module: ModuleCode) => async () => {
+  // 等待 hydration 完成
+  await waitForAuthHydration();
+  
+  const state = useAuthStore.getState();
+  const token = state.token;
+  const user = state.user;
   
   if (!token) {
     throw redirect({ to: "/login" });
   }
   
-  // 检查 role_name 是否为 admin（适配新 RBAC 结构）
-  if (user?.role_name?.toLowerCase() !== "admin") {
+  if (!canAccessModule(user, module)) {
+    throw redirect({ to: "/" });
+  }
+};
+
+/**
+ * 系统角色检查函数
+ * 仅系统角色（拥有通配权限）可访问
+ */
+const checkSystemRole = async () => {
+  // 等待 hydration 完成
+  await waitForAuthHydration();
+  
+  const state = useAuthStore.getState();
+  const token = state.token;
+  const user = state.user;
+  
+  if (!token) {
+    throw redirect({ to: "/login" });
+  }
+  
+  if (!user?.is_system_role) {
     throw redirect({ to: "/" });
   }
 };
 
 /**
  * 已登录检查函数（登录页使用）
+ * 已登录用户访问登录页时重定向到首页
  */
-const checkAlreadyLoggedIn = () => {
+const checkAlreadyLoggedIn = async () => {
+  // 等待 hydration 完成
+  await waitForAuthHydration();
+  
   const token = useAuthStore.getState().token;
   if (token) {
     throw redirect({ to: "/" });
@@ -67,17 +121,17 @@ const indexRoute = new Route({
 });
 
 /**
- * 用户管理路由 - 需要管理员权限
+ * 用户管理路由 - 需要 users 模块权限
  */
 const usersRoute = new Route({
   getParentRoute: () => rootRoute,
   path: "/users",
   component: UserListPage,
-  beforeLoad: checkAdmin,
+  beforeLoad: checkModuleAccess("users"),
 });
 
 /**
- * 患者管理路由 - 需要认证
+ * 患者管理路由 - 需要认证（具体权限由后端控制）
  */
 const patientsRoute = new Route({
   getParentRoute: () => rootRoute,
@@ -137,13 +191,13 @@ const loginRoute = new Route({
 });
 
 /**
- * 压力性损伤仿真教学路由 - 需要认证
+ * 压力性损伤仿真教学路由 - 需要 pressure_ulcer 模块权限
  */
 const pressureUlcerRoute = new Route({
   getParentRoute: () => rootRoute,
   path: "/pressure-ulcer",
   component: PressureUlcerPage,
-  beforeLoad: checkAuth,
+  beforeLoad: checkModuleAccess("pressure_ulcer"),
 });
 
 /**

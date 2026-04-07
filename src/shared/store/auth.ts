@@ -3,7 +3,7 @@ import { logger } from '../logger';
 import type { UserInfo } from '../api/types';
 
 export interface User extends UserInfo {
-  // 扩展用户信息
+  // 用户接口继承 UserInfo，与后端对齐
 }
 
 export interface AuthState {

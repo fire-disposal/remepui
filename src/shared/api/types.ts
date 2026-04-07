@@ -57,6 +57,8 @@ export interface UserInfo {
   username: string;
   role_id: string;
   role_name: string;
+  is_system_role: boolean;        // 是否为系统角色（通配权限）
+  accessible_modules: string[];   // 可访问模块列表（["*"] 表示通配）
   status: string;
   email?: string;
   last_login_at?: string;
@@ -70,6 +72,8 @@ export interface User {
   username: string;
   role_id: string;
   role_name: string;
+  is_system_role: boolean;
+  accessible_modules: string[];
   phone?: string;
   email?: string;
   avatar_url?: string;
@@ -295,6 +299,33 @@ export const UserStatus = {
   LOCKED: 'locked',
 } as const;
 
+// ==================== 模块类型 ====================
+
+export type ModuleCode = 
+  | 'dashboard' 
+  | 'patients' 
+  | 'devices' 
+  | 'bindings' 
+  | 'data' 
+  | 'users' 
+  | 'roles' 
+  | 'audit_logs' 
+  | 'settings' 
+  | 'pressure_ulcer';
+
+export const ModuleCodes = {
+  DASHBOARD: 'dashboard',
+  PATIENTS: 'patients',
+  DEVICES: 'devices',
+  BINDINGS: 'bindings',
+  DATA: 'data',
+  USERS: 'users',
+  ROLES: 'roles',
+  AUDIT_LOGS: 'audit_logs',
+  SETTINGS: 'settings',
+  PRESSURE_ULCER: 'pressure_ulcer',
+} as const;
+
 // ==================== 角色相关 ====================
 
 export interface Role {
@@ -348,6 +379,22 @@ export interface Permission {
 
 export interface PermissionListResponse {
   permissions: Permission[];
+}
+
+// ==================== 模块相关（新增）====================
+
+export interface Module {
+  id: string;
+  code: ModuleCode;
+  name: string;
+  description?: string | null;
+  category: 'core' | 'admin' | 'feature';
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface ModuleListResponse {
+  modules: Module[];
 }
 
 // ==================== 审计日志相关 ====================
