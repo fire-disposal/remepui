@@ -1,7 +1,7 @@
 import { apiClient } from "./client";
 import type {
   Binding,
-  PaginatedResponse,
+  BindingListResponse,
   CreateBindingRequest,
   BindingQuery,
 } from "./types";
@@ -20,8 +20,8 @@ export const bindingApi = {
   /**
    * 获取绑定列表
    */
-  async list(params?: BindingQuery): Promise<PaginatedResponse<Binding>> {
-    return apiClient.get("/bindings", { params }) as unknown as Promise<PaginatedResponse<Binding>>;
+  async list(params?: BindingQuery): Promise<BindingListResponse> {
+    return apiClient.get("/bindings", { params }) as unknown as Promise<BindingListResponse>;
   },
 
   /**

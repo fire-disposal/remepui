@@ -7,7 +7,7 @@ export * from "./api";
 
 // 组件
 export { ErrorBoundary } from "./components/ErrorBoundary";
-export { PermissionGuard, usePermission } from "./components/PermissionGuard";
+export { ModuleGuard, SystemRoleGuard, usePermission } from "./components/PermissionGuard";
 
 // 配置
 export * from "./config";

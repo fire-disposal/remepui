@@ -19,6 +19,8 @@ import {
   Pagination,
   Flex,
   PasswordInput,
+  ScrollArea,
+  Divider,
 } from "@mantine/core";
 import {
   IconPlus,
@@ -28,8 +30,10 @@ import {
   IconRefresh,
   IconShield,
   IconUser,
+  IconEye,
+  IconLock,
 } from "@tabler/icons-react";
-import { useUsers, useCreateUser, useDeleteUser, useRoles } from "../../../shared/api";
+import { useUsers, useCreateUser, useDeleteUser, useRoles, useRoleModules } from "../../../shared/api";
 import { notifications } from "@mantine/notifications";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -54,6 +58,9 @@ export const UserListPage = () => {
   const [filterRoleId, setFilterRoleId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [permissionsModalOpen, setPermissionsModalOpen] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedUserRoleId, setSelectedUserRoleId] = useState<string | null>(null);
 
   // 获取角色列表
   const { data: rolesData, isLoading: rolesLoading } = useRoles();
@@ -87,6 +94,9 @@ export const UserListPage = () => {
 
   // 删除用户
   const deleteMutation = useDeleteUser();
+
+  // 获取选中用户的角色模块
+  const { data: userRoleModules } = useRoleModules(selectedUserRoleId || "");
 
   const handleCreateUser = async () => {
     if (!username.trim() || !password.trim()) {
@@ -149,6 +159,12 @@ export const UserListPage = () => {
     setRoleId(roleOptions[1]?.value || roleOptions[0]?.value || "");
     setEmail("");
     setPhone("");
+  };
+
+  const openPermissionsModal = (userId: string, userRoleId: string) => {
+    setSelectedUserId(userId);
+    setSelectedUserRoleId(userRoleId);
+    setPermissionsModalOpen(true);
   };
 
   const users = data?.data || [];
@@ -322,6 +338,15 @@ export const UserListPage = () => {
                       </Table.Td>
                       <Table.Td>
                         <Group justify="flex-end" gap="xs">
+                          <Tooltip label="查看权限">
+                            <ActionIcon
+                              variant="subtle"
+                              color="blue"
+                              onClick={() => openPermissionsModal(user.id, user.role_id)}
+                            >
+                              <IconLock size={16} />
+                            </ActionIcon>
+                          </Tooltip>
                           <Tooltip label="编辑">
                             <ActionIcon variant="subtle" color="blue">
                               <IconEdit size={16} />
@@ -411,6 +436,69 @@ export const UserListPage = () => {
             </Button>
           </Group>
         </Stack>
+      </Modal>
+
+      {/* 查看权限弹窗 */}
+      <Modal
+        opened={permissionsModalOpen}
+        onClose={() => {
+          setPermissionsModalOpen(false);
+          setSelectedUserId(null);
+          setSelectedUserRoleId(null);
+        }}
+        title="用户权限信息"
+        size="lg"
+      >
+        <ScrollArea h={400}>
+          <Stack gap="md">
+            <Group>
+              <Text fw={500}>角色：</Text>
+              <Badge color="blue">
+                {rolesData?.roles.find((r) => r.id === selectedUserRoleId)?.name ||
+                  "未知角色"}
+              </Badge>
+            </Group>
+            <Divider />
+            <Text fw={500}>可访问模块：</Text>
+            {userRoleModules?.modules && userRoleModules.modules.length > 0 ? (
+              <Stack gap="xs">
+                {userRoleModules.modules.map((module) => (
+                  <Paper key={module.id} p="sm" withBorder>
+                    <Group justify="space-between">
+                      <div>
+                        <Text fw={500}>{module.name}</Text>
+                        {module.description && (
+                          <Text size="xs" color="dimmed">
+                            {module.description}
+                          </Text>
+                        )}
+                      </div>
+                      <Badge
+                        size="xs"
+                        variant="light"
+                        color={
+                          module.category === "core"
+                            ? "blue"
+                            : module.category === "admin"
+                            ? "grape"
+                            : "teal"
+                        }
+                      >
+                        {module.category === "core"
+                          ? "核心"
+                          : module.category === "admin"
+                          ? "管理"
+                          : "特色"}
+                      </Badge>
+                    </Group>
+                  </Paper>
+                ))}
+              </Stack>
+            ) : (
+              <Text color="dimmed">暂无模块权限</Text>
+            )}
+          </Stack>
+        </ScrollArea>
       </Modal>
     </Container>
   );

@@ -1,0 +1,1 @@
+export { BindingVisualPage } from './pages/BindingVisualPage';

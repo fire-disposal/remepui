@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState, useCallback } from "react";
 import {
   AppShell,
   Group,
@@ -59,19 +59,43 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
     () => currentShell.menuItems.map((item) => item.path),
     [currentShell.menuItems],
   );
-  const fallbackPath = availablePaths[0] ?? "/";
+  
+  const getFallbackPath = useCallback(() => {
+    // 找到用户有权限访问的第一个模块
+    for (const item of currentShell.menuItems) {
+      if (canAccessModule(user, item.module)) {
+        return item.path;
+      }
+    }
+    // 如果没有任何权限，跳转到 forbidden 页面
+    return "/forbidden";
+  }, [currentShell.menuItems, user]);
+
+  const fallbackPath = getFallbackPath();
   const isPathAllowed = availablePaths.includes(location.pathname);
   const shellTitleColor = currentShell.primaryColor === "gray" ? "dark.7" : `${currentShell.primaryColor}.7`;
 
   // 只在登录页不显示布局
   const isLoginPage = location.pathname === "/login";
 
-  // 刷新或手动输入 URL 时，确保页面路径属于当前外壳
+  // 刷新或手动输入 URL 时，确保页面路径属于当前外壳且有权限
   useEffect(() => {
-    if (!isLoginPage && token && user && !isPathAllowed && !isTransitioning) {
-      navigate({ to: fallbackPath, replace: true });
+    if (!isLoginPage && token && user && !isTransitioning) {
+      // 检查当前路径是否在外壳菜单中
+      if (!isPathAllowed) {
+        // 路径不在菜单中，跳转到fallback
+        navigate({ to: fallbackPath, replace: true });
+        return;
+      }
+      
+      // 检查当前路径对应的模块是否有权限
+      const currentItem = currentShell.menuItems.find(item => item.path === location.pathname);
+      if (currentItem && !canAccessModule(user, currentItem.module)) {
+        // 无权限访问当前模块，跳转到fallback
+        navigate({ to: fallbackPath, replace: true });
+      }
     }
-  }, [fallbackPath, isLoginPage, isPathAllowed, isTransitioning, navigate, token, user]);
+  }, [fallbackPath, isLoginPage, isPathAllowed, isTransitioning, navigate, token, user, location.pathname, currentShell.menuItems]);
 
   // 切换外壳后，移动端自动收起导航
   useEffect(() => {

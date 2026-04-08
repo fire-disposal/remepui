@@ -100,10 +100,10 @@ export const DashboardPage = () => {
   }, [user?.username]);
 
   const stats = {
-    patients: patientsData?.pagination?.total || 0,
-    devices: devicesData?.pagination?.total || 0,
+    patients: patientsData?.total || 0,
+    devices: devicesData?.total || 0,
     activeDevices: devicesData?.data?.filter((d) => d.status === "active").length || 0,
-    bindings: bindingsData?.pagination?.total || 0,
+    bindings: bindingsData?.total || 0,
   };
 
   const recentRecords = recentData?.data || [];

@@ -27,8 +27,8 @@ export function canAccessModule(user: User | null, module: ModuleCode | string):
   }
   
   // 检查模块是否在可访问列表中
-  return user.accessible_modules.includes(module) || 
-         user.accessible_modules.includes("*");
+  return user.accessible_modules.includes(module as ModuleCode) || 
+          user.accessible_modules.includes("*" as ModuleCode);
 }
 
 /**
@@ -38,7 +38,7 @@ export function getAccessibleModules(user: User | null): string[] {
   if (!user) return [];
   
   // 系统角色或通配权限返回全部模块
-  if (user.is_system_role || user.accessible_modules.includes("*")) {
+  if (user.is_system_role || user.accessible_modules.includes("*" as ModuleCode)) {
     return [
       "dashboard",
       "patients",

@@ -22,6 +22,8 @@ import {
   IconStar,
   IconFlame,
   IconHeart,
+  IconClipboardText,
+  IconLock,
 } from "@tabler/icons-react";
 import type { ModuleCode } from "../api/types";
 
@@ -40,6 +42,8 @@ export const ICON_MAP: Record<string, React.ComponentType<{ size?: number | stri
   star: IconStar,
   flame: IconFlame,
   heart: IconHeart,
+  clipboard: IconClipboardText,
+  lock: IconLock,
 };
 
 export interface MenuItem {
@@ -159,9 +163,14 @@ export const SHELL_CONFIGS: Record<string, ShellConfig> = {
     menuItems: [
       { id: 'dashboard', label: '仪表板', path: '/', icon: 'home', module: 'dashboard' },
       { id: 'users', label: '用户管理', path: '/users', icon: 'user', module: 'users' },
+      { id: 'roles', label: '角色管理', path: '/roles', icon: 'shield', module: 'roles' },
+      { id: 'modules', label: '模块权限', path: '/modules', icon: 'lock', module: 'roles' },
+      { id: 'audit-logs', label: '审计日志', path: '/audit-logs', icon: 'clipboard', module: 'audit_logs' },
+      { id: 'raw-data', label: '原始数据', path: '/raw-data', icon: 'device', module: 'data' },
       { id: 'patients', label: '患者管理', path: '/patients', icon: 'users', module: 'patients' },
       { id: 'devices', label: '设备管理', path: '/devices', icon: 'device', module: 'devices' },
-      { id: 'bindings', label: '绑定关系', path: '/bindings', icon: 'link', module: 'bindings' },
+      { id: 'bindings-visual', label: '可视化绑定', path: '/bindings-visual', icon: 'link', module: 'bindings' },
+      { id: 'health-timeline', label: '健康时间轴', path: '/health-timeline', icon: 'chart', module: 'data' },
       { id: 'data', label: '数据查询', path: '/data', icon: 'chart', module: 'data' },
       { id: 'settings', label: '外壳设置', path: '/settings/shell', icon: 'palette', module: 'settings' },
     ],

@@ -8,6 +8,13 @@ import { DataPage } from "../modules/data/pages/DataPage";
 import { UserListPage } from "../modules/users/pages/UserListPage";
 import { ShellSettingsPage } from "../modules/settings/pages/ShellSettingsPage";
 import { PressureUlcerPage } from "../modules/pressure-ulcer";
+import { RolesPage } from "../modules/roles";
+import { AuditLogsPage } from "../modules/audit-logs";
+import { ModulesPage } from "../modules/modules";
+import { ForbiddenPage } from "./pages/ForbiddenPage";
+import { BindingVisualPage } from "../modules/bindings-visual";
+import { HealthTimelinePage } from "../modules/health-timeline";
+import { RawDataPage } from "../modules/raw-data";
 import { RootComponent } from "./layout/RootComponent";
 import { useAuthStore } from "../shared/store/auth";
 import { canAccessModule } from "../shared/lib/permissions";
@@ -64,8 +71,47 @@ const checkModuleAccess = (module: ModuleCode) => async () => {
   }
   
   if (!canAccessModule(user, module)) {
-    throw redirect({ to: "/" });
+    // 无权限时，查找用户有权限访问的第一个模块
+    const accessibleModules = user?.accessible_modules || [];
+    const fallbackPath = getFallbackPath(accessibleModules, user?.is_system_role);
+    throw redirect({ to: fallbackPath });
   }
+};
+
+/**
+ * 获取fallback路径
+ * 当用户无权限访问当前模块时，重定向到有权限的模块
+ */
+const getFallbackPath = (accessibleModules: string[], isSystemRole?: boolean): string => {
+  // 系统角色或通配权限默认跳转到首页
+  if (isSystemRole || accessibleModules.includes("*")) {
+    return "/";
+  }
+  
+  // 模块路径映射
+  const modulePaths: Record<string, string> = {
+    dashboard: "/",
+    patients: "/patients",
+    devices: "/devices",
+    bindings: "/bindings",
+    data: "/data",
+    users: "/users",
+    roles: "/roles",
+    audit_logs: "/audit-logs",
+    settings: "/settings/shell",
+    pressure_ulcer: "/pressure-ulcer",
+  };
+  
+  // 优先跳转到第一个有权限的模块
+  for (const module of accessibleModules) {
+    const path = modulePaths[module];
+    if (path) {
+      return path;
+    }
+  }
+  
+  // 如果没有任何权限模块，跳转到首页（会显示无权限提示）
+  return "/";
 };
 
 /**
@@ -111,16 +157,6 @@ const rootRoute = new RootRoute({
 });
 
 /**
- * 首页路由 - 需要认证
- */
-const indexRoute = new Route({
-  getParentRoute: () => rootRoute,
-  path: "/",
-  component: DashboardPage,
-  beforeLoad: checkAuth,
-});
-
-/**
  * 用户管理路由 - 需要 users 模块权限
  */
 const usersRoute = new Route({
@@ -131,63 +167,141 @@ const usersRoute = new Route({
 });
 
 /**
- * 患者管理路由 - 需要认证（具体权限由后端控制）
+ * 角色管理路由 - 需要 roles 模块权限
+ */
+const rolesRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: "/roles",
+  component: RolesPage,
+  beforeLoad: checkModuleAccess("roles"),
+});
+
+/**
+ * 审计日志路由 - 需要 audit_logs 模块权限
+ */
+const auditLogsRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: "/audit-logs",
+  component: AuditLogsPage,
+  beforeLoad: checkModuleAccess("audit_logs"),
+});
+
+/**
+ * 模块权限路由 - 需要 roles 模块权限
+ */
+const modulesRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: "/modules",
+  component: ModulesPage,
+  beforeLoad: checkModuleAccess("roles"),
+});
+
+/**
+ * 可视化绑定路由 - 需要 bindings 模块权限
+ */
+const bindingVisualRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: "/bindings-visual",
+  component: BindingVisualPage,
+  beforeLoad: checkModuleAccess("bindings"),
+});
+
+/**
+ * 健康时间轴路由 - 需要 data 模块权限
+ */
+const healthTimelineRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: "/health-timeline",
+  component: HealthTimelinePage,
+  beforeLoad: checkModuleAccess("data"),
+});
+
+/**
+ * 原始数据路由 - 需要 data 模块权限
+ */
+const rawDataRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: "/raw-data",
+  component: RawDataPage,
+  beforeLoad: checkModuleAccess("data"),
+});
+
+/**
+ * 患者管理路由 - 需要 patients 模块权限
  */
 const patientsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: "/patients",
   component: PatientListPage,
-  beforeLoad: checkAuth,
+  beforeLoad: checkModuleAccess("patients"),
 });
 
 /**
- * 设备管理路由 - 需要认证
+ * 设备管理路由 - 需要 devices 模块权限
  */
 const devicesRoute = new Route({
   getParentRoute: () => rootRoute,
   path: "/devices",
   component: DeviceListPage,
-  beforeLoad: checkAuth,
+  beforeLoad: checkModuleAccess("devices"),
 });
 
 /**
- * 绑定关系路由 - 需要认证
+ * 绑定关系路由 - 需要 bindings 模块权限
  */
 const bindingsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: "/bindings",
   component: BindingListPage,
-  beforeLoad: checkAuth,
+  beforeLoad: checkModuleAccess("bindings"),
 });
 
 /**
- * 数据查询路由 - 需要认证
+ * 数据查询路由 - 需要 data 模块权限
  */
 const dataRoute = new Route({
   getParentRoute: () => rootRoute,
   path: "/data",
   component: DataPage,
-  beforeLoad: checkAuth,
+  beforeLoad: checkModuleAccess("data"),
 });
 
 /**
- * 外壳设置路由 - 需要认证
+ * 外壳设置路由 - 需要 settings 模块权限
  */
 const settingsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: "/settings/shell",
   component: ShellSettingsPage,
-  beforeLoad: checkAuth,
+  beforeLoad: checkModuleAccess("settings"),
 });
 
 /**
- * 登录页路由 - 公开
+ * 登录页面路由
  */
 const loginRoute = new Route({
   getParentRoute: () => rootRoute,
   path: "/login",
   component: LoginPage,
-  beforeLoad: checkAlreadyLoggedIn,
+});
+
+/**
+ * 403 无权限页面路由
+ */
+const forbiddenRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: "/forbidden",
+  component: ForbiddenPage,
+});
+
+/**
+ * 首页路由（仪表板）
+ */
+const indexRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: "/",
+  component: DashboardPage,
+  beforeLoad: checkModuleAccess("dashboard"),
 });
 
 /**
@@ -238,6 +352,12 @@ const notFoundRoute = new NotFoundRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   usersRoute,
+  rolesRoute,
+  auditLogsRoute,
+  modulesRoute,
+  bindingVisualRoute,
+  healthTimelineRoute,
+  rawDataRoute,
   patientsRoute,
   devicesRoute,
   bindingsRoute,
@@ -245,6 +365,7 @@ const routeTree = rootRoute.addChildren([
   settingsRoute,
   pressureUlcerRoute,
   loginRoute,
+  forbiddenRoute,
 ]);
 
 /**

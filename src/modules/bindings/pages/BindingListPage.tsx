@@ -115,8 +115,9 @@ export const BindingListPage = () => {
     }
   };
 
-  const bindings = data?.data || [];
-  const pagination = data?.pagination;
+  const bindings = data?.bindings || [];
+  const total = data?.total || 0;
+  const totalPages = Math.ceil(total / 20);
 
   const deviceOptions = (devicesData?.data || []).map((d) => ({
     value: d.id,
@@ -276,12 +277,12 @@ export const BindingListPage = () => {
               </Table>
 
               {/* 分页 */}
-              {pagination && pagination.total_pages > 1 && (
+              {totalPages > 1 && (
                 <Flex justify="center" p="md">
                   <Pagination
                     value={page}
                     onChange={setPage}
-                    total={pagination.total_pages}
+                    total={totalPages}
                   />
                 </Flex>
               )}

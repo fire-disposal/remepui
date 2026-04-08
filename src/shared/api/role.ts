@@ -5,10 +5,12 @@ import type {
   CreateRoleRequest,
   UpdateRoleRequest,
   RoleQuery,
-  Permission,
-  PermissionListResponse,
-  RolePermissionResponse,
-  AssignPermissionRequest,
+  Module,
+  ModuleListResponse,
+  RoleModuleResponse,
+  AssignModuleRequest,
+  BatchAssignModulesRequest,
+  SetRoleModulesRequest,
 } from "./types";
 
 /**
@@ -60,44 +62,62 @@ export const roleApi = {
   },
 
   /**
-   * 获取角色权限
-   * GET /admin/roles/:id/permissions
+   * 获取角色模块权限
+   * GET /admin/roles/:id/modules
    */
-  async getPermissions(id: string): Promise<RolePermissionResponse> {
-    return apiClient.get(`/admin/roles/${id}/permissions`) as unknown as Promise<RolePermissionResponse>;
+  async getModules(id: string): Promise<RoleModuleResponse> {
+    return apiClient.get(`/admin/roles/${id}/modules`) as unknown as Promise<RoleModuleResponse>;
   },
 
   /**
-   * 为角色分配权限
-   * POST /admin/roles/:id/permissions
+   * 为角色分配模块权限
+   * POST /admin/roles/:id/modules
    * 仅管理员可用
    */
-  async assignPermission(id: string, data: AssignPermissionRequest): Promise<void> {
-    return apiClient.post(`/admin/roles/${id}/permissions`, data) as unknown as Promise<void>;
+  async assignModule(id: string, data: AssignModuleRequest): Promise<void> {
+    return apiClient.post(`/admin/roles/${id}/modules`, data) as unknown as Promise<void>;
   },
 
   /**
-   * 移除角色权限
-   * DELETE /admin/roles/:id/permissions/:permission_id
+   * 批量分配模块权限
+   * POST /admin/roles/:id/modules/batch
    * 仅管理员可用
    */
-  async revokePermission(id: string, permissionId: string): Promise<void> {
-    return apiClient.delete(`/admin/roles/${id}/permissions/${permissionId}`) as unknown as Promise<void>;
+  async batchAssignModules(id: string, data: BatchAssignModulesRequest): Promise<void> {
+    return apiClient.post(`/admin/roles/${id}/modules/batch`, data) as unknown as Promise<void>;
   },
-};
+
+  /**
+   * 设置角色模块权限（替换）
+   * PUT /admin/roles/:id/modules
+   * 仅管理员可用
+   */
+  async setModules(id: string, data: SetRoleModulesRequest): Promise<void> {
+    return apiClient.put(`/admin/roles/${id}/modules`, data) as unknown as Promise<void>;
+  },
+
+  /**
+   * 移除角色模块权限
+   * DELETE /admin/roles/:id/modules/:module_id
+   * 仅管理员可用
+   */
+  async revokeModule(id: string, moduleId: string): Promise<void> {
+    return apiClient.delete(`/admin/roles/${id}/modules/${moduleId}`) as unknown as Promise<void>;
+  },
+}
 
 /**
- * 权限管理 API 服务
+ * 模块管理 API 服务
  */
-export const permissionApi = {
+export const moduleApi = {
   /**
-   * 列出所有权限
-   * GET /admin/permissions
+   * 列出所有模块
+   * GET /admin/modules
    */
-  async list(): Promise<PermissionListResponse> {
-    return apiClient.get("/admin/permissions") as unknown as Promise<PermissionListResponse>;
+  async list(): Promise<ModuleListResponse> {
+    return apiClient.get("/admin/modules") as unknown as Promise<ModuleListResponse>;
   },
-};
+}
 
 /**
  * 检查用户是否具有管理员角色
