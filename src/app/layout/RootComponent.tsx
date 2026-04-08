@@ -14,19 +14,31 @@ export function RootComponent() {
   const hydrateAuth = useAuthStore((s) => s.hydrate);
   const hydrateShell = useShellStore((s) => s.hydrate);
   const authLoading = useAuthStore((s) => s.loading);
+  const authUser = useAuthStore((s) => s.user);
+  const authToken = useAuthStore((s) => s.token);
   const [isHydrated, setIsHydrated] = useState(false);
+
+  console.log('[RootComponent] State:', {
+    isHydrated,
+    authLoading,
+    hasToken: !!authToken,
+    hasUser: !!authUser,
+    userModules: authUser?.accessible_modules
+  });
 
   useEffect(() => {
     const doHydration = async () => {
+      console.log('[RootComponent] Starting hydration...');
       try {
         hydrateAuth();
         hydrateShell();
         
         await new Promise(resolve => setTimeout(resolve, 0));
         
+        console.log('[RootComponent] Hydration complete');
         setIsHydrated(true);
       } catch (error) {
-        console.error('Hydration failed:', error);
+        console.error('[RootComponent] Hydration failed:', error);
         setIsHydrated(true);
       }
     };
@@ -35,6 +47,7 @@ export function RootComponent() {
   }, [hydrateAuth, hydrateShell]);
 
   if (!isHydrated) {
+    console.log('[RootComponent] Showing: initializing');
     return (
       <Center style={{ height: '100vh' }}>
         <Stack align="center" gap="md">
@@ -46,6 +59,7 @@ export function RootComponent() {
   }
 
   if (authLoading) {
+    console.log('[RootComponent] Showing: restoring auth');
     return (
       <Center style={{ height: '100vh' }}>
         <Stack align="center" gap="md">
@@ -56,6 +70,7 @@ export function RootComponent() {
     );
   }
 
+  console.log('[RootComponent] Rendering AppLayout');
   return (
     <AppLayout>
       <Outlet />
