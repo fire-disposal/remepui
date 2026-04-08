@@ -26,6 +26,7 @@ import {
   Divider,
   Modal,
 } from '@mantine/core';
+import { DateInput } from '@mantine/dates';
 import {
   IconDatabase,
   IconRefresh,
@@ -39,7 +40,7 @@ import {
   IconX,
   IconAlertCircle,
 } from '@tabler/icons-react';
-import { useRawData } from '../../../shared/api';
+import { useRawData, rawDataApi } from '../../../shared/api';
 import { JsonViewer } from '../components/JsonViewer';
 import { notifications } from '@mantine/notifications';
 
@@ -58,6 +59,8 @@ export const RawDataPage = () => {
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
   const [filterSerialNumber, setFilterSerialNumber] = useState<string>('');
   const [filterDeviceType, setFilterDeviceType] = useState<string | null>(null);
+  const [filterStartTime, setFilterStartTime] = useState<string | null>(null);
+  const [filterEndTime, setFilterEndTime] = useState<string | null>(null);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<any | null>(null);
@@ -68,6 +71,8 @@ export const RawDataPage = () => {
     status: filterStatus || undefined,
     serial_number: filterSerialNumber || undefined,
     device_type: filterDeviceType || undefined,
+    start_time: filterStartTime || undefined,
+    end_time: filterEndTime || undefined,
     page,
     page_size: pageSize,
   });
@@ -109,25 +114,23 @@ export const RawDataPage = () => {
         loading: true,
       });
 
-      // 模拟导出（实际应调用后端API）
-      const exportData = selectedRows.size > 0 
-        ? records.filter(r => selectedRows.has(r.id))
-        : records;
+      const blob = await rawDataApi.export({
+        source: filterSource || undefined,
+        serial_number: filterSerialNumber || undefined,
+        device_type: filterDeviceType || undefined,
+        status: filterStatus || undefined,
+      }, format);
 
-      const blob = new Blob(
-        [JSON.stringify(exportData, null, 2)],
-        { type: 'application/json' }
-      );
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `raw-data-${new Date().toISOString()}.json`;
+      a.download = `raw-data-export-${new Date().toISOString()}.${format}`;
       a.click();
       URL.revokeObjectURL(url);
 
       notifications.show({
         title: '导出成功',
-        message: `已导出 ${exportData.length} 条记录`,
+        message: '数据已下载',
         color: 'green',
       });
       setExportModalOpen(false);
@@ -249,6 +252,8 @@ export const RawDataPage = () => {
                   setFilterStatus(null);
                   setFilterSerialNumber('');
                   setFilterDeviceType(null);
+                  setFilterStartTime(null);
+                  setFilterEndTime(null);
                 }}
               >
                 重置
@@ -287,6 +292,22 @@ export const RawDataPage = () => {
                 onChange={setFilterStatus}
                 clearable
                 style={{ width: 150 }}
+              />
+              <DateInput
+                placeholder="开始时间"
+                value={filterStartTime}
+                onChange={setFilterStartTime}
+                clearable
+                style={{ width: 180 }}
+                valueFormat="YYYY-MM-DD"
+              />
+              <DateInput
+                placeholder="结束时间"
+                value={filterEndTime}
+                onChange={setFilterEndTime}
+                clearable
+                style={{ width: 180 }}
+                valueFormat="YYYY-MM-DD"
               />
             </Group>
           </Stack>
