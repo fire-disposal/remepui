@@ -43,6 +43,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
   const theme = useMantineTheme();
   const user = useAuthStore((state) => state.user);
   const token = useAuthStore((state) => state.token);
+  const loading = useAuthStore((state) => state.loading);
   const { logout } = useAuth();
 
   // 外壳管理
@@ -55,19 +56,23 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [navbarOpened, { toggle: toggleNavbar, close: closeNavbar }] = useDisclosure(false);
 
+  // 判断是否显示布局 - 所有 hooks 必须在条件渲染之前
+  const isLoginPage = location.pathname === "/login";
+  const isAuthenticated = !loading && !!token && !!user;
+  const shouldShowLayout = !isLoginPage && isAuthenticated;
+
   const availablePaths = useMemo(
     () => currentShell.menuItems.map((item) => item.path),
     [currentShell.menuItems],
   );
   
   const getFallbackPath = useCallback(() => {
-    // 找到用户有权限访问的第一个模块
+    if (!user) return "/forbidden";
     for (const item of currentShell.menuItems) {
       if (canAccessModule(user, item.module)) {
         return item.path;
       }
     }
-    // 如果没有任何权限，跳转到 forbidden 页面
     return "/forbidden";
   }, [currentShell.menuItems, user]);
 
@@ -75,34 +80,28 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
   const isPathAllowed = availablePaths.includes(location.pathname);
   const shellTitleColor = currentShell.primaryColor === "gray" ? "dark.7" : `${currentShell.primaryColor}.7`;
 
-  // 只在登录页不显示布局
-  const isLoginPage = location.pathname === "/login";
-
   // 刷新或手动输入 URL 时，确保页面路径属于当前外壳且有权限
   useEffect(() => {
-    if (!isLoginPage && token && user && !isTransitioning) {
-      // 检查当前路径是否在外壳菜单中
+    if (shouldShowLayout && !isTransitioning) {
       if (!isPathAllowed) {
-        // 路径不在菜单中，跳转到fallback
         navigate({ to: fallbackPath, replace: true });
         return;
       }
       
-      // 检查当前路径对应的模块是否有权限
       const currentItem = currentShell.menuItems.find(item => item.path === location.pathname);
       if (currentItem && !canAccessModule(user, currentItem.module)) {
-        // 无权限访问当前模块，跳转到fallback
         navigate({ to: fallbackPath, replace: true });
       }
     }
-  }, [fallbackPath, isLoginPage, isPathAllowed, isTransitioning, navigate, token, user, location.pathname, currentShell.menuItems]);
+  }, [shouldShowLayout, fallbackPath, isPathAllowed, isTransitioning, navigate, user, location.pathname, currentShell.menuItems]);
 
   // 切换外壳后，移动端自动收起导航
   useEffect(() => {
     closeNavbar();
   }, [currentShellId, closeNavbar]);
 
-  if (isLoginPage || !token || !user) {
+  // 未认证或登录页，直接渲染 children（不显示布局）
+  if (!shouldShowLayout) {
     return <>{children}</>;
   }
 
@@ -111,12 +110,10 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
     if (newShellId && newShellId !== currentShellId) {
       setIsTransitioning(true);
       
-      // 使用 setTimeout 让动画有时间执行
       setTimeout(() => {
         setShell(newShellId);
         setIsTransitioning(false);
         
-        // 如果当前路径在新外壳的菜单中不存在，导航到首页
         const paths = SHELL_CONFIGS[newShellId].menuItems.map(m => m.path);
         if (!paths.includes(location.pathname)) {
           navigate({ to: paths[0] || "/", replace: true });
@@ -197,7 +194,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
                           {currentShell.title}
                         </Text>
                         <Text size="xs" c={shellTitleColor}>
-                          {currentShell.name}
+                          {currentShell.description}
                         </Text>
                       </div>
                     )}
@@ -207,74 +204,51 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             </UnstyledButton>
           </Group>
 
-          {/* 右侧：外壳切换 + 用户菜单 */}
-          <Group gap="md" wrap="nowrap">
-            {/* 外壳选择下拉 */}
-            <Box visibleFrom="sm">
-              <Select
-                placeholder="切换视图"
-                searchable
-                clearable={false}
-                data={getShellOptions()}
-                value={currentShellId}
-                onChange={handleShellChange}
-                leftSection={<IconSwitch size={isMobile ? 14 : 18} />}
-                style={{ minWidth: 180 }}
-                size="sm"
-                renderOption={({ option, checked }) => (
-                  <Group justify="space-between" flex={1}>
-                    <Group gap="xs">
-                      <Text>
-                        {SHELL_CONFIGS[option.value]?.logo || "📄"}
-                      </Text>
-                      <Text size="sm">{option.label}</Text>
-                    </Group>
-                    {checked && (
-                      <IconCheck size={isMobile ? 14 : 16} color={theme.colors[theme.primaryColor][6]} />
-                    )}
-                  </Group>
-                )}
-              />
-            </Box>
-
-            {/* 用户菜单 */}
-            <Menu position="bottom-end" shadow="md">
+          {/* 右侧：外壳选择 + 用户菜单 */}
+          <Group gap="sm">
+            <Select
+              placeholder="切换视图"
+              searchable
+              clearable={false}
+              data={getShellOptions()}
+              value={currentShellId}
+              onChange={handleShellChange}
+              leftSection={<IconSwitch size={14} />}
+              size="xs"
+              visibleFrom="sm"
+            />
+            <Menu shadow="md" width={200}>
               <Menu.Target>
-                <UnstyledButton
-                  style={{ padding: "4px 8px", borderRadius: "4px" }}
-                >
-                  <Group gap="xs" wrap="nowrap">
-                    <Avatar name={user.username} radius="xl" size="sm" color={theme.primaryColor} />
-                    <Box visibleFrom="sm" flex={1}>
-                      <Text size="sm" fw={500} lineClamp={1}>
-                        {user.username}
+                <UnstyledButton>
+                  <Group gap="xs">
+                    <Avatar color={currentShell.primaryColor} radius="xl" size="sm">
+                      {user?.username?.[0]?.toUpperCase() || "U"}
+                    </Avatar>
+                    <Box visibleFrom="sm">
+                      <Text size="sm" fw={500}>
+                        {user?.username}
                       </Text>
+                      <Badge size="xs" variant="light" color={user?.is_system_role ? "red" : "gray"}>
+                        {user?.is_system_role ? "系统角色" : "普通用户"}
+                      </Badge>
                     </Box>
-                    {user.is_system_role && (
-                      <Box visibleFrom="sm">
-                        <Badge size="xs" color="red" variant="light">
-                          管理员
-                        </Badge>
-                      </Box>
-                    )}
                   </Group>
                 </UnstyledButton>
               </Menu.Target>
 
               <Menu.Dropdown>
-                <Menu.Item leftSection={<IconUser size={isMobile ? 12 : 14} />} disabled>
-                  个人信息
-                </Menu.Item>
-                <Menu.Item leftSection={<IconSettings size={isMobile ? 12 : 14} />} disabled>
-                  设置
+                <Menu.Label>账户</Menu.Label>
+                <Menu.Item leftSection={<IconUser size={14} />}>
+                  {user?.username}
                 </Menu.Item>
                 <Menu.Divider />
+                <Menu.Label>操作</Menu.Label>
                 <Menu.Item
-                  leftSection={<IconLogout size={isMobile ? 12 : 14} />}
-                  onClick={handleLogout}
                   color="red"
+                  leftSection={<IconLogout size={14} />}
+                  onClick={handleLogout}
                 >
-                  退出登录
+                  登出
                 </Menu.Item>
               </Menu.Dropdown>
             </Menu>
@@ -361,7 +335,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
         </Stack>
       </AppShell.Navbar>
 
-      {/* 主区域 */}
+      {/* 主内容区 */}
       <AppShell.Main>
         {children}
       </AppShell.Main>

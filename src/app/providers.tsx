@@ -62,15 +62,11 @@ function createAppTheme(primaryColor: string) {
 /**
  * 外壳主题提供者
  * 根据当前外壳配置动态更新主题
+ * 
+ * 注意：hydration 移至 RootComponent 统一处理
  */
 function ShellThemeProvider({ children }: { children: ReactNode }) {
   const currentShell = useShellStore((state) => state.currentShell);
-  const hydrate = useShellStore((state) => state.hydrate);
-
-  // 应用启动时恢复外壳状态
-  useEffect(() => {
-    hydrate();
-  }, [hydrate]);
 
   // 根据外壳配置创建主题
   const theme = createAppTheme(currentShell.primaryColor);
