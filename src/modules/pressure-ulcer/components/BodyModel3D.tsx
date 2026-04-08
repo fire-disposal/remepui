@@ -13,7 +13,7 @@
  * 3. 实现 HumanBodyGLTF 组件
  */
 
-import { useRef, useMemo, useState, useCallback, Suspense } from 'react';
+import { useRef, useMemo, useState, useCallback, Suspense, useLayoutEffect } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import {
   OrbitControls,
@@ -382,26 +382,24 @@ const HumanBodyGLTF = ({
   }, [overallDamage]);
 
   const [hoveredPart, setHoveredPart] = useState<BodyPartType | null>(null);
+  
   const clonedScene = useMemo(() => {
     const cloned = scene.clone(true);
-    const collectedMaterials: THREE.MeshStandardMaterial[] = [];
 
     cloned.traverse((obj) => {
       const mesh = obj as THREE.Mesh;
       if (!mesh.isMesh) return;
 
-      // 处理单材质或多材质（数组）
       const materials = Array.isArray(mesh.material)
         ? mesh.material
         : [mesh.material];
 
       const newMaterials = materials.map(() => {
-        const material = new THREE.MeshStandardMaterial({
+        return new THREE.MeshStandardMaterial({
           color: new THREE.Color('#d1d5db'),
           emissive: new THREE.Color('#000000'),
           metalness: 0.05,
           roughness: 0.85,
-          // 完全移除所有贴图，避免彩色条纹
           map: null,
           emissiveMap: null,
           normalMap: null,
@@ -415,8 +413,6 @@ const HumanBodyGLTF = ({
           envMap: null,
           vertexColors: false,
         });
-        collectedMaterials.push(material);
-        return material;
       });
 
       mesh.material = Array.isArray(mesh.material)
@@ -426,9 +422,28 @@ const HumanBodyGLTF = ({
       mesh.receiveShadow = true;
     });
 
-    materialsRef.current = collectedMaterials;
     return cloned;
   }, [scene]);
+
+  useLayoutEffect(() => {
+    const mats: THREE.MeshStandardMaterial[] = [];
+    clonedScene.traverse((obj) => {
+      const mesh = obj as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      
+      const materials = Array.isArray(mesh.material)
+        ? mesh.material
+        : [mesh.material];
+      
+      materials.forEach(mat => {
+        if (mat instanceof THREE.MeshStandardMaterial) {
+          mats.push(mat);
+        }
+      });
+    });
+    
+    materialsRef.current = mats;
+  }, [clonedScene]);
 
   useFrame((_, delta) => {
     const smoothing = 1 - Math.exp(-delta * 3.5);
