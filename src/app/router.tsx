@@ -40,16 +40,20 @@ const waitForAuthHydration = async (): Promise<void> => {
 };
 
 /**
- * 认证检查函数
- * 确保用户已登录，如果未登录则重定向到登录页
+ * 已登录检查函数（登录页使用）
+ * 已登录用户访问登录页时重定向到有权限的模块
  */
-const checkAuth = async () => {
-  // 等待 hydration 完成
+const checkAlreadyLoggedIn = async () => {
   await waitForAuthHydration();
   
-  const token = useAuthStore.getState().token;
-  if (!token) {
-    throw redirect({ to: "/login" });
+  const state = useAuthStore.getState();
+  const token = state.token;
+  const user = state.user;
+  
+  if (token && user) {
+    const accessibleModules = user.accessible_modules || [];
+    const fallbackPath = getFallbackPath(accessibleModules);
+    throw redirect({ to: fallbackPath });
   }
 };
 
@@ -70,9 +74,8 @@ const checkModuleAccess = (module: ModuleCode) => async () => {
   }
   
   if (!canAccessModule(user, module)) {
-    // 无权限时，查找用户有权限访问的第一个模块
     const accessibleModules = user?.accessible_modules || [];
-    const fallbackPath = getFallbackPath(accessibleModules, user?.is_system_role);
+    const fallbackPath = getFallbackPath(accessibleModules);
     throw redirect({ to: fallbackPath });
   }
 };
@@ -121,11 +124,10 @@ const getFallbackPath = (accessibleModules: string[], isSystemRole?: boolean): s
 export { getFallbackPath };
 
 /**
- * 系统角色检查函数
- * 仅系统角色（拥有通配权限）可访问
+ * 系统角色检查函数（已废弃，统一使用模块权限）
+ * 仅检查用户是否拥有通配权限 "*"
  */
 const checkSystemRole = async () => {
-  // 等待 hydration 完成
   await waitForAuthHydration();
   
   const state = useAuthStore.getState();
@@ -136,38 +138,9 @@ const checkSystemRole = async () => {
     throw redirect({ to: "/login" });
   }
   
-  if (!user?.is_system_role) {
+  const hasWildcard = user?.accessible_modules?.includes("*" as ModuleCode);
+  if (!hasWildcard) {
     throw redirect({ to: "/" });
-  }
-};
-
-/**
- * 已登录检查函数（登录页使用）
- * 已登录用户访问登录页时重定向到有权限的模块
- * 如果用户没有任何权限，清除登录状态
- */
-const checkAlreadyLoggedIn = async () => {
-  await waitForAuthHydration();
-  
-  const state = useAuthStore.getState();
-  const token = state.token;
-  const user = state.user;
-  
-  if (token) {
-    // 检查用户是否有任何权限
-    const hasPermission = user?.is_system_role || 
-      (user?.accessible_modules && user.accessible_modules.length > 0);
-    
-    if (!hasPermission) {
-      // 无权限，清除登录状态，留在登录页
-      useAuthStore.getState().logout();
-      return;
-    }
-    
-    // 已登录且有权限，重定向到有权限的模块
-    const accessibleModules = user?.accessible_modules || [];
-    const fallbackPath = getFallbackPath(accessibleModules, user?.is_system_role);
-    throw redirect({ to: fallbackPath });
   }
 };
 

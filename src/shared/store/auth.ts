@@ -112,14 +112,13 @@ export const useAuthStore = create<AuthState>((set) => ({
       try {
         const user = JSON.parse(userStr);
         
-        // 检查是否为新的用户数据格式（包含 is_system_role 和 accessible_modules）
-        if (typeof user.is_system_role === 'undefined' || !Array.isArray(user.accessible_modules)) {
+        // 检查是否包含 accessible_modules 字段
+        if (!Array.isArray(user.accessible_modules)) {
           logger.info('Old user data format detected, clearing auth state');
           localStorage.removeItem(STORAGE_KEY);
           localStorage.removeItem(USER_STORAGE_KEY);
           set({ loading: false });
           
-          // 显示重新登录提示
           setTimeout(() => {
             showTokenExpiredDialog(
               '系统权限架构已更新',

@@ -229,8 +229,8 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
                       <Text size="sm" fw={500}>
                         {user?.username}
                       </Text>
-                      <Badge size="xs" variant="light" color={user?.is_system_role ? "red" : "gray"}>
-                        {user?.is_system_role ? "系统角色" : "普通用户"}
+                      <Badge size="xs" variant="light" color={user?.accessible_modules?.includes("*" as any) ? "red" : "gray"}>
+                        {user?.accessible_modules?.includes("*" as any) ? "通配权限" : "普通用户"}
                       </Badge>
                     </Box>
                   </Group>

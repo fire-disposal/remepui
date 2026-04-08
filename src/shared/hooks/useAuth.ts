@@ -43,7 +43,7 @@ export const useAuth = () => {
 
         // 使用智能重定向到用户有权限的第一个模块
         const accessibleModules = user.accessible_modules || [];
-        const fallbackPath = getFallbackPath(accessibleModules, user.is_system_role);
+        const fallbackPath = getFallbackPath(accessibleModules);
         navigate({ to: fallbackPath });
       } catch (error) {
         const errorMsg =

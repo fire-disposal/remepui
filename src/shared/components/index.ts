@@ -3,4 +3,4 @@
  */
 
 export { ErrorBoundary } from "./ErrorBoundary";
-export { ModuleGuard, SystemRoleGuard, usePermission } from "./PermissionGuard";
+export { ModuleGuard, WildcardGuard, usePermission } from "./PermissionGuard";
