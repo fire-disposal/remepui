@@ -19,7 +19,17 @@ export interface AuthState {
   login: (user: User, token: string) => void;
   logout: () => void;
   hydrate: () => void;
+  
+  // Hydration callback
+  onHydrationComplete?: () => void;
 }
+
+let hydrationCallbacks: Array<() => void> = [];
+
+const notifyHydrationComplete = () => {
+  hydrationCallbacks.forEach(cb => cb());
+  hydrationCallbacks = [];
+};
 
 const STORAGE_KEY = 'auth_token';
 const USER_STORAGE_KEY = 'auth_user';
@@ -121,6 +131,7 @@ export const useAuthStore = create<AuthState>((set) => ({
           localStorage.removeItem(STORAGE_KEY);
           localStorage.removeItem(USER_STORAGE_KEY);
           set({ loading: false });
+          notifyHydrationComplete();
           return;
         }
 
@@ -139,6 +150,7 @@ export const useAuthStore = create<AuthState>((set) => ({
                 '检测到旧版本登录状态，请重新登录以使用新功能。'
               );
             }, 500);
+            notifyHydrationComplete();
             return;
           }
           
@@ -149,18 +161,34 @@ export const useAuthStore = create<AuthState>((set) => ({
             loading: false,
           });
           logger.info('Auth state hydrated from storage');
+          notifyHydrationComplete();
         } catch (parseError) {
           logger.error('Failed to parse user data', parseError);
           localStorage.removeItem(STORAGE_KEY);
           localStorage.removeItem(USER_STORAGE_KEY);
           set({ loading: false });
+          notifyHydrationComplete();
         }
       } else {
         set({ loading: false });
+        notifyHydrationComplete();
       }
     } catch (error) {
       logger.error('Hydration error', error);
       set({ loading: false });
+      notifyHydrationComplete();
     }
   },
 }));
+
+/**
+ * 注册 hydration 完成回调
+ */
+export const onAuthHydrationComplete = (callback: () => void) => {
+  const state = useAuthStore.getState();
+  if (!state.loading) {
+    callback();
+  } else {
+    hydrationCallbacks.push(callback);
+  }
+};

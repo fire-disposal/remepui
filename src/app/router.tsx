@@ -19,23 +19,21 @@ import { useAuthStore } from "../shared/store/auth";
 import { canAccessModule } from "../shared/lib/permissions";
 import type { ModuleCode } from "../shared/api/types";
 
+import { onAuthHydrationComplete } from "../shared/store/auth";
+
 /**
  * 等待认证状态恢复（hydrate）
- * 路由守卫中使用，确保在检查权限前 store 已恢复
+ * 使用事件订阅机制，避免轮询
  */
 const waitForAuthHydration = async (): Promise<void> => {
+  const state = useAuthStore.getState();
+  
+  if (!state.loading) {
+    return;
+  }
+  
   return new Promise((resolve) => {
-    const checkHydration = () => {
-      const state = useAuthStore.getState();
-      // 如果 loading 为 false，说明 hydrate 已完成
-      if (!state.loading) {
-        resolve();
-      } else {
-        // 轮询检查，每 50ms 检查一次
-        setTimeout(checkHydration, 50);
-      }
-    };
-    checkHydration();
+    onAuthHydrationComplete(resolve);
   });
 };
 
