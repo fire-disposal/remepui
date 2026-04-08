@@ -51,7 +51,7 @@ export const PressureUlcerPage = () => {
     formatTime,
   } = useEnhancedSimulation();
 
-  const [records, setRecords] = useState<SimulationRecord[]>(loadRecords());
+  const [records, setRecords] = useState<SimulationRecord[]>(() => loadRecords());
   const [events, setEvents] = useState<PressureUlcerEvent[]>([]);
   const [paramChangePoints, setParamChangePoints] = useState<Array<{ time: number; param: string; value: number }>>([]);
   const [showPrediction, setShowPrediction] = useState(true);

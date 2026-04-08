@@ -56,19 +56,27 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   setUser: (user) => {
     set({ user });
-    if (user) {
-      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
-    } else {
-      localStorage.removeItem(USER_STORAGE_KEY);
+    try {
+      if (user) {
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+      } else {
+        localStorage.removeItem(USER_STORAGE_KEY);
+      }
+    } catch (error) {
+      logger.error('Failed to persist user data', error);
     }
   },
 
   setToken: (token) => {
     set({ token });
-    if (token) {
-      localStorage.setItem(STORAGE_KEY, token);
-    } else {
-      localStorage.removeItem(STORAGE_KEY);
+    try {
+      if (token) {
+        localStorage.setItem(STORAGE_KEY, token);
+      } else {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    } catch (error) {
+      logger.error('Failed to persist token', error);
     }
   },
 
@@ -79,8 +87,12 @@ export const useAuthStore = create<AuthState>((set) => ({
       token,
       isAuthenticated: true,
     });
-    localStorage.setItem(STORAGE_KEY, token);
-    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+    try {
+      localStorage.setItem(STORAGE_KEY, token);
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+    } catch (error) {
+      logger.error('Failed to persist login state', error);
+    }
   },
 
   logout: () => {
@@ -90,26 +102,21 @@ export const useAuthStore = create<AuthState>((set) => ({
       token: null,
       isAuthenticated: false,
     });
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(USER_STORAGE_KEY);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(USER_STORAGE_KEY);
+    } catch (error) {
+      logger.error('Failed to clear auth state', error);
+    }
   },
 
   hydrate: () => {
-    console.log('[AuthStore] Starting hydrate...');
     try {
       const token = localStorage.getItem(STORAGE_KEY);
       const userStr = localStorage.getItem(USER_STORAGE_KEY);
-      
-      console.log('[AuthStore] LocalStorage:', {
-        hasToken: !!token,
-        hasUserStr: !!userStr,
-        tokenLength: token?.length,
-        userStrLength: userStr?.length
-      });
 
       if (token && userStr) {
         if (isTokenExpired(token)) {
-          console.log('[AuthStore] Token expired, clearing');
           logger.info('Token expired, clearing auth state');
           localStorage.removeItem(STORAGE_KEY);
           localStorage.removeItem(USER_STORAGE_KEY);
@@ -119,16 +126,8 @@ export const useAuthStore = create<AuthState>((set) => ({
 
         try {
           const user = JSON.parse(userStr);
-          console.log('[AuthStore] Parsed user:', {
-            userId: user.id,
-            username: user.username,
-            hasModules: !!user.accessible_modules,
-            modulesType: typeof user.accessible_modules,
-            modulesLength: user.accessible_modules?.length
-          });
           
           if (!Array.isArray(user.accessible_modules)) {
-            console.log('[AuthStore] Invalid modules format, clearing');
             logger.info('Old user data format detected, clearing auth state');
             localStorage.removeItem(STORAGE_KEY);
             localStorage.removeItem(USER_STORAGE_KEY);
@@ -143,7 +142,6 @@ export const useAuthStore = create<AuthState>((set) => ({
             return;
           }
           
-          console.log('[AuthStore] Hydration successful, setting state');
           set({
             token,
             user,
@@ -152,18 +150,15 @@ export const useAuthStore = create<AuthState>((set) => ({
           });
           logger.info('Auth state hydrated from storage');
         } catch (parseError) {
-          console.error('[AuthStore] Parse error:', parseError);
           logger.error('Failed to parse user data', parseError);
           localStorage.removeItem(STORAGE_KEY);
           localStorage.removeItem(USER_STORAGE_KEY);
           set({ loading: false });
         }
       } else {
-        console.log('[AuthStore] No token/user, setting loading=false');
         set({ loading: false });
       }
     } catch (error) {
-      console.error('[AuthStore] Hydration error:', error);
       logger.error('Hydration error', error);
       set({ loading: false });
     }

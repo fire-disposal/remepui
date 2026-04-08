@@ -66,7 +66,7 @@ export const BlandScorePanel = ({
 }: BlandScorePanelProps) => {
   const [scores, setScores] = useState<BlandScoreData>(createInitialBlandScore());
   const [result, setResult] = useState<BlandScoreResult | null>(null);
-  const [history, setHistory] = useState<BlandScoreHistory[]>(loadBlandScoreHistory());
+  const [history, setHistory] = useState<BlandScoreHistory[]>(() => loadBlandScoreHistory());
   const [showHistory, setShowHistory] = useState(false);
 
   // 计算评分结果
@@ -79,19 +79,12 @@ export const BlandScorePanel = ({
 
   // 更新单个维度评分
   const updateScore = useCallback((dimension: BlandDimension, value: number) => {
-    setScores(prev => ({
-      ...prev,
-      [dimension]: value,
-    }));
-    // 自动重新计算
-    setTimeout(() => {
-      const newResult = calculateBlandScoreResult(
-        { ...scores, [dimension]: value },
-        assessor
-      );
-      setResult(newResult);
-      onScoreChange?.(newResult);
-    }, 0);
+    const newScores = { ...scores, [dimension]: value };
+    setScores(newScores);
+    
+    const newResult = calculateBlandScoreResult(newScores, assessor);
+    setResult(newResult);
+    onScoreChange?.(newResult);
   }, [scores, assessor, onScoreChange]);
 
   // 保存评分
