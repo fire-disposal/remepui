@@ -4,6 +4,7 @@ import { useAuthStore } from "../store/auth";
 import { authApi, clearRefreshToken } from "../api/auth";
 import { toast } from "../ui/toast";
 import { logger } from "../logger";
+import { getFallbackPath } from "../../app/router";
 
 /**
  * useAuth - 认证操作 Hook
@@ -29,8 +30,10 @@ export const useAuth = () => {
         toast.success(`欢迎回来, ${user.username}!`);
         logger.info("Login successful", { username: user.username });
 
-        // 使用 router 导航到首页
-        navigate({ to: "/" });
+        // 使用智能重定向到用户有权限的第一个模块
+        const accessibleModules = user.accessible_modules || [];
+        const fallbackPath = getFallbackPath(accessibleModules, user.is_system_role);
+        navigate({ to: fallbackPath });
       } catch (error) {
         const errorMsg =
           error instanceof Error ? error.message : "登录失败";

@@ -110,9 +110,12 @@ const getFallbackPath = (accessibleModules: string[], isSystemRole?: boolean): s
     }
   }
   
-  // 如果没有任何权限模块，跳转到首页（会显示无权限提示）
-  return "/";
+  // 如果没有任何权限模块，跳转到禁止访问页面
+  return "/forbidden";
 };
+
+// 导出供其他模块使用
+export { getFallbackPath };
 
 /**
  * 系统角色检查函数
@@ -137,15 +140,20 @@ const checkSystemRole = async () => {
 
 /**
  * 已登录检查函数（登录页使用）
- * 已登录用户访问登录页时重定向到首页
+ * 已登录用户访问登录页时重定向到有权限的模块
  */
 const checkAlreadyLoggedIn = async () => {
-  // 等待 hydration 完成
   await waitForAuthHydration();
   
-  const token = useAuthStore.getState().token;
+  const state = useAuthStore.getState();
+  const token = state.token;
+  const user = state.user;
+  
   if (token) {
-    throw redirect({ to: "/" });
+    // 已登录，重定向到有权限的模块
+    const accessibleModules = user?.accessible_modules || [];
+    const fallbackPath = getFallbackPath(accessibleModules, user?.is_system_role);
+    throw redirect({ to: fallbackPath });
   }
 };
 
@@ -283,6 +291,7 @@ const loginRoute = new Route({
   getParentRoute: () => rootRoute,
   path: "/login",
   component: LoginPage,
+  beforeLoad: checkAlreadyLoggedIn,
 });
 
 /**
@@ -292,6 +301,7 @@ const forbiddenRoute = new Route({
   getParentRoute: () => rootRoute,
   path: "/forbidden",
   component: ForbiddenPage,
+  beforeLoad: checkAuth,
 });
 
 /**
