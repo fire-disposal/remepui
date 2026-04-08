@@ -161,10 +161,10 @@ export const DataPage = () => {
                           <Text size="sm" c="dimmed">来源:</Text>
                           <Badge size="sm" variant="outline">{record.source}</Badge>
                         </Group>
-                        {record.subject_id && (
+                        {record.patient_id && (
                           <Group>
                             <Text size="sm" c="dimmed">患者ID:</Text>
-                            <Text size="sm" style={{ fontFamily: "monospace" }}>{record.subject_id}</Text>
+                            <Text size="sm" style={{ fontFamily: "monospace" }}>{record.patient_id}</Text>
                           </Group>
                         )}
                         <Text size="sm" c="dimmed" mt="xs">数据负载:</Text>

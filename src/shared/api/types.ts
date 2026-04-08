@@ -282,22 +282,18 @@ export interface BindingQuery {
 // ==================== 数据相关 ====================
 
 export interface DataRecord {
-  id: string;
-  device_id: string;
+  time: string;
+  device_id?: string | null;
   patient_id?: string | null;
-  subject_id?: string | null; // 别名
   data_type: string;
   data_category?: 'metric' | 'event';
+  value_numeric?: number | null;
+  value_text?: string | null;
   severity?: 'info' | 'warning' | 'alert';
   status?: 'active' | 'acknowledged' | 'resolved';
-  value?: number | null;
-  unit?: string | null;
-  metadata?: Record<string, any>;
-  payload?: Record<string, any>; // 别名
-  source?: string; // 数据源
-  timestamp: string;
-  time?: string; // 兼容字段
-  created_at: string;
+  payload?: Record<string, any>;
+  source?: string;
+  ingested_at?: string;
 }
 
 export interface DataQueryResponse {

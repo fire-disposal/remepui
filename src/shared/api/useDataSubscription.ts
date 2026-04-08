@@ -21,16 +21,6 @@ interface UseDataSubscriptionResult {
   refetch: () => void;
 }
 
-/**
- * 实时数据订阅 Hook
- * 
- * 使用 TanStack Query 特性无感合并：
- * 1. 历史数据查询（HTTP）
- * 2. 实时数据推送（WebSocket）
- * 
- * 数据流：
- * HTTP历史数据 → 渲染 → WS推送新数据 → 合并到缓存 → 自动重新渲染
- */
 export function useDataSubscription(options: UseDataSubscriptionOptions = {}): UseDataSubscriptionResult {
   const { query, enabled = true, wsUrl, staleTime = 30000 } = options;
   const queryClient = useQueryClient();
@@ -49,8 +39,32 @@ export function useDataSubscription(options: UseDataSubscriptionOptions = {}): U
   } = useQuery({
     queryKey,
     queryFn: async () => {
-      const result = await dataApi.query(query);
-      return result.data;
+      try {
+        console.log('[useDataSubscription] Fetching data with query:', query);
+        const result = await dataApi.query(query);
+        console.log('[useDataSubscription] API response:', result);
+        
+        if (!result) {
+          console.warn('[useDataSubscription] Empty result');
+          return [];
+        }
+        
+        if (Array.isArray(result)) {
+          console.log('[useDataSubscription] Result is array, length:', result.length);
+          return result;
+        }
+        
+        if (result.data && Array.isArray(result.data)) {
+          console.log('[useDataSubscription] Result has data field, length:', result.data.length);
+          return result.data;
+        }
+        
+        console.warn('[useDataSubscription] Unexpected result format:', typeof result);
+        return [];
+      } catch (err) {
+        console.error('[useDataSubscription] Query error:', err);
+        throw err;
+      }
     },
     enabled,
     staleTime,

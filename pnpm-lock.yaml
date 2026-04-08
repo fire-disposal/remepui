@@ -53,9 +53,15 @@ importers:
       axios:
         specifier: ^1.13.6
         version: 1.13.6
+      d3-axis:
+        specifier: ^3.0.0
+        version: 3.0.0
       d3-scale:
         specifier: ^4.0.2
         version: 4.0.2
+      d3-selection:
+        specifier: ^3.0.0
+        version: 3.0.0
       d3-time-format:
         specifier: ^4.1.0
         version: 4.1.0
@@ -921,6 +927,10 @@ packages:
 
   d3-array@3.2.4:
     resolution: {integrity: sha512-tdQAmyA18i4J7wprpYq8ClcxZy3SC31QMeByyCFyRt7BVHdREQZ5lpzoe5mFEYZUWe+oq8HBvk9JjpibyEV4Jg==}
+    engines: {node: '>=12'}
+
+  d3-axis@3.0.0:
+    resolution: {integrity: sha512-IH5tgjV4jE/GhHkRV0HiVYPDtvfjHQlQfJHs0usq7M30XcSBvOotpmH1IgkcXsO/5gEQZD43B//fc7SRT5S+xw==}
     engines: {node: '>=12'}
 
   d3-color@3.1.0:
@@ -2803,6 +2813,8 @@ snapshots:
   d3-array@3.2.4:
     dependencies:
       internmap: 2.0.3
+
+  d3-axis@3.0.0: {}
 
   d3-color@3.1.0: {}
 
