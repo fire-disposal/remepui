@@ -1,9 +1,11 @@
 /**
  * 视图切换器组件
  * 支持 2D/3D 视图切换
+ * 
+ * 性能优化：使用 memo 防止不必要的重渲染
  */
 
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import {
   Box,
   Group,
@@ -42,7 +44,7 @@ interface ViewSwitcherProps {
 /**
  * 视图切换器
  */
-export const ViewSwitcher = ({
+export const ViewSwitcher = memo(({
   currentMode,
   currentEngine = 'r3f',
   currentPosture = 'supine',
@@ -143,6 +145,8 @@ export const ViewSwitcher = ({
       </Group>
     </Paper>
   );
-};
+});
+
+ViewSwitcher.displayName = 'ViewSwitcher';
 
 export default ViewSwitcher;

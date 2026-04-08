@@ -47,6 +47,7 @@ interface BodyModel3DProps {
   onPartHover?: (part: BodyPartType | null) => void;
   onPartClick?: (part: BodyPartType) => void;
   isRunning?: boolean;
+  onReady?: () => void;
 }
 
 /**
@@ -561,20 +562,38 @@ const Scene = (props: BodyModel3DProps) => {
 
 /**
  * 3D 人体模型主组件
+ * 
+ * 性能优化：
+ * - frameloop="demand": 仅在需要时渲染，减少 CPU/GPU 消耗
+ * - dpr: 控制像素比，平衡性能和质量
+ * - gl 配置: 优化 WebGL 上下文
  */
-export const BodyModel3D = (props: BodyModel3DProps) => {
+export const BodyModel3D = ({ onReady, ...props }: BodyModel3DProps) => {
+  const handleCreated = useCallback(() => {
+    requestAnimationFrame(() => {
+      onReady?.();
+    });
+  }, [onReady]);
+
   return (
     <Canvas
       style={{ width: '100%', height: '100%', background: '#f8fafc' }}
       camera={{
-        // 调整相机位置以观察躺卧姿态
         position: [0, 2, 3],
         fov: 50,
         near: 0.1,
         far: 100,
       }}
       shadows
-      gl={{ antialias: true, alpha: true }}
+      gl={{ 
+        antialias: true, 
+        alpha: true,
+        powerPreference: 'high-performance',
+        failIfMajorPerformanceCaveat: false,
+      }}
+      dpr={[1, 2]}
+      frameloop="demand"
+      onCreated={handleCreated}
     >
       <Scene {...props} />
     </Canvas>

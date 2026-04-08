@@ -283,8 +283,18 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
       </AppShell.Header>
 
       {/* 侧栏 */}
-      <AppShell.Navbar p="md">
-        <Stack gap="md" h="100%">
+      <AppShell.Navbar 
+        p="md" 
+        style={{
+          height: isMobile && navbarOpened ? '100vh' : undefined,
+          maxHeight: isMobile && navbarOpened ? '100vh' : undefined,
+          position: isMobile && navbarOpened ? 'fixed' : undefined,
+          top: isMobile && navbarOpened ? 60 : undefined,
+          zIndex: isMobile && navbarOpened ? 200 : undefined,
+        }}
+      >
+        <Stack gap="md" style={{ height: '100%', overflow: 'hidden' }}>
+          {/* 移动端外壳选择 */}
           <Box hiddenFrom="sm">
             <Select
               placeholder="切换视图"
@@ -298,14 +308,29 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             />
           </Box>
 
-          <ScrollArea style={{ flex: 1 }}>
+          {/* 菜单滚动区域 */}
+          <ScrollArea
+            style={{ 
+              flex: 1, 
+              minHeight: 0,
+              height: isMobile && navbarOpened ? 'calc(100vh - 180px)' : undefined,
+            }}
+            scrollbarSize={8}
+            offsetScrollbars
+            type="auto"
+            styles={{
+              viewport: {
+                paddingBottom: '16px',
+              },
+            }}
+          >
             <Transition
               mounted={!isTransitioning}
               transition="slide-right"
               duration={150}
             >
               {(styles) => (
-                <Stack gap="xs" style={styles}>
+                <Stack gap="xs" style={styles} pb="md">
                   {currentShell.menuItems.map((item) => {
                     const IconComponent = item.icon ? ICON_MAP[item.icon] : null;
                     const hasAccess = canAccessModule(user, item.module);

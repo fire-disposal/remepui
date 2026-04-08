@@ -1,9 +1,11 @@
 /**
  * 人体模型组件 - 2D SVG 版本
  * 使用 Mantine UI 组件
+ * 
+ * 性能优化：使用 memo 防止不必要的重渲染
  */
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, memo } from 'react';
 import { Badge, Button, Group, Text, Box, Paper, Tooltip, Progress, ThemeIcon } from '@mantine/core';
 import { IconRotateClockwise, IconAlertTriangle } from '@tabler/icons-react';
 import { BODY_PARTS_CONFIG, BODY_PART_LABELS } from '../config/bodyParts.config';
@@ -58,7 +60,7 @@ const getPressureUlcerStage = (damage: number): string => {
   return 'Ⅳ期：全层组织损伤';
 };
 
-export const BodyModel = ({
+export const BodyModel = memo(({
   bodyParts,
   onReposition,
   isRunning = false,
@@ -387,4 +389,6 @@ export const BodyModel = ({
       )}
     </Box>
   );
-};
+});
+
+BodyModel.displayName = 'BodyModel';

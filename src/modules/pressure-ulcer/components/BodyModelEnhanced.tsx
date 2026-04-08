@@ -1,13 +1,15 @@
 /**
  * 增强版人体模型组件
  * 支持 2D/3D 双模式切换
+ * 优化：预加载 3D 场景，避免切换时的大刷新
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, memo, useMemo } from 'react';
 import {
   Box,
   Paper,
   Text,
+  LoadingOverlay,
 } from '@mantine/core';
 import { BodyModel } from './BodyModel';
 import { BodyModel3D } from './BodyModel3D';
@@ -37,8 +39,13 @@ interface BodyModelEnhancedProps {
 /**
  * 增强版人体模型
  * 支持 2D/3D 视图切换
+ * 
+ * 性能优化策略：
+ * 1. 预加载 3D 场景：enable3D 时立即挂载 3D 组件（隐藏），避免切换时的首次挂载延迟
+ * 2. CSS opacity 切换：使用 CSS 控制显隐，避免组件卸载/挂载
+ * 3. memo 优化：防止不必要的重渲染
  */
-export const BodyModelEnhanced = ({
+export const BodyModelEnhanced = memo(({
   bodyParts,
   onReposition,
   onPartHover,
@@ -49,20 +56,15 @@ export const BodyModelEnhanced = ({
   enable3D = true,
   posture,
 }: BodyModelEnhancedProps) => {
-  // 视图状态
   const [viewState, setViewState] = useState<ViewState>({
     ...DEFAULT_VIEW_STATE,
     mode: defaultMode,
   });
-  const [hasMounted3D, setHasMounted3D] = useState(defaultMode === '3d');
+  const [is3DReady, setIs3DReady] = useState(false);
   const effectivePosture = posture ?? viewState.posture;
-
-  // 切换视图模式
+  
   const handleModeChange = useCallback((mode: ViewMode) => {
     if (mode === viewState.mode) return;
-    if (mode === '3d') {
-      setHasMounted3D(true);
-    }
     setViewState(prev => ({
       ...prev,
       mode,
@@ -71,22 +73,18 @@ export const BodyModelEnhanced = ({
     }));
   }, [viewState.mode]);
 
-  // 切换渲染引擎
   const handleEngineChange = useCallback((engine: RenderEngine) => {
     setViewState(prev => ({ ...prev, engine }));
   }, []);
 
-  // 切换姿态
   const handlePostureChange = useCallback((posture: BodyPosture) => {
     setViewState(prev => ({ ...prev, posture }));
   }, []);
 
-  // 切换自动旋转
   const handleAutoRotateChange = useCallback((autoRotate: boolean) => {
     setViewState(prev => ({ ...prev, autoRotate }));
   }, []);
 
-  // 重置相机
   const handleResetCamera = useCallback(() => {
     setViewState(prev => ({
       ...prev,
@@ -94,19 +92,20 @@ export const BodyModelEnhanced = ({
     }));
   }, []);
 
-  // 处理部位悬停
   const handlePartHover = useCallback((part: BodyPartType | null) => {
     onPartHover?.(part);
   }, [onPartHover]);
 
-  // 处理部位点击
   const handlePartClick = useCallback((part: BodyPartType) => {
     onPartClick?.(part);
   }, [onPartClick]);
 
+  const handle3DReady = useCallback(() => {
+    setIs3DReady(true);
+  }, []);
+
   return (
     <Box style={{ position: 'relative', width: '100%', height: '100%' }}>
-      {/* 视图切换器 - 右上角 */}
       {enable3D && (
         <Box
           style={{
@@ -130,7 +129,6 @@ export const BodyModelEnhanced = ({
         </Box>
       )}
 
-      {/* 视图内容（2D/3D 保活切换，避免反复卸载导致的大刷新） */}
       <Box style={{ position: 'relative', width: '100%', height: '100%' }}>
         <Box
           style={{
@@ -149,12 +147,12 @@ export const BodyModelEnhanced = ({
           />
         </Box>
 
-        {hasMounted3D && (
+        {enable3D && (
           <Box
             style={{
               position: 'absolute',
               inset: 0,
-              opacity: viewState.mode === '3d' ? 1 : 0,
+              opacity: viewState.mode === '3d' && is3DReady ? 1 : 0,
               pointerEvents: viewState.mode === '3d' ? 'auto' : 'none',
               transition: 'opacity 0.2s ease',
             }}
@@ -166,12 +164,20 @@ export const BodyModelEnhanced = ({
               onPartHover={handlePartHover}
               onPartClick={handlePartClick}
               isRunning={isRunning}
+              onReady={handle3DReady}
             />
+            {!is3DReady && (
+              <LoadingOverlay
+                visible={true}
+                zIndex={1000}
+                overlayProps={{ radius: 'sm', blur: 2 }}
+                loaderProps={{ color: 'blue', type: 'bars' }}
+              />
+            )}
           </Box>
         )}
       </Box>
 
-      {/* 模式指示器 */}
       <Box
         style={{
           position: 'absolute',
@@ -188,6 +194,8 @@ export const BodyModelEnhanced = ({
       </Box>
     </Box>
   );
-};
+});
+
+BodyModelEnhanced.displayName = 'BodyModelEnhanced';
 
 export default BodyModelEnhanced;
