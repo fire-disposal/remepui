@@ -11,7 +11,6 @@ import { PressureUlcerPage } from "../modules/pressure-ulcer";
 import { RolesPage } from "../modules/roles";
 import { AuditLogsPage } from "../modules/audit-logs";
 import { ModulesPage } from "../modules/modules";
-import { ForbiddenPage } from "./pages/ForbiddenPage";
 import { BindingVisualPage } from "../modules/bindings-visual";
 import { HealthTimelinePage } from "../modules/health-timeline";
 import { RawDataPage } from "../modules/raw-data";
@@ -81,6 +80,10 @@ const checkModuleAccess = (module: ModuleCode) => async () => {
 /**
  * 获取fallback路径
  * 当用户无权限访问当前模块时，重定向到有权限的模块
+ * 
+ * 如果用户没有任何权限：
+ * - 系统角色：跳转到首页
+ * - 普通用户：跳转到登录页并提示
  */
 const getFallbackPath = (accessibleModules: string[], isSystemRole?: boolean): string => {
   // 系统角色或通配权限默认跳转到首页
@@ -110,8 +113,8 @@ const getFallbackPath = (accessibleModules: string[], isSystemRole?: boolean): s
     }
   }
   
-  // 如果没有任何权限模块，跳转到禁止访问页面
-  return "/forbidden";
+  // 没有任何权限，返回登录页（会提示联系管理员）
+  return "/login";
 };
 
 // 导出供其他模块使用
@@ -141,6 +144,7 @@ const checkSystemRole = async () => {
 /**
  * 已登录检查函数（登录页使用）
  * 已登录用户访问登录页时重定向到有权限的模块
+ * 如果用户没有任何权限，清除登录状态
  */
 const checkAlreadyLoggedIn = async () => {
   await waitForAuthHydration();
@@ -150,7 +154,17 @@ const checkAlreadyLoggedIn = async () => {
   const user = state.user;
   
   if (token) {
-    // 已登录，重定向到有权限的模块
+    // 检查用户是否有任何权限
+    const hasPermission = user?.is_system_role || 
+      (user?.accessible_modules && user.accessible_modules.length > 0);
+    
+    if (!hasPermission) {
+      // 无权限，清除登录状态，留在登录页
+      useAuthStore.getState().logout();
+      return;
+    }
+    
+    // 已登录且有权限，重定向到有权限的模块
     const accessibleModules = user?.accessible_modules || [];
     const fallbackPath = getFallbackPath(accessibleModules, user?.is_system_role);
     throw redirect({ to: fallbackPath });
@@ -295,16 +309,6 @@ const loginRoute = new Route({
 });
 
 /**
- * 403 无权限页面路由
- */
-const forbiddenRoute = new Route({
-  getParentRoute: () => rootRoute,
-  path: "/forbidden",
-  component: ForbiddenPage,
-  beforeLoad: checkAuth,
-});
-
-/**
  * 首页路由（仪表板）
  */
 const indexRoute = new Route({
@@ -375,7 +379,6 @@ const routeTree = rootRoute.addChildren([
   settingsRoute,
   pressureUlcerRoute,
   loginRoute,
-  forbiddenRoute,
 ]);
 
 /**

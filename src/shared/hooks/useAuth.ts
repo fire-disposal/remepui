@@ -24,6 +24,17 @@ export const useAuth = () => {
         const response = await authApi.login({ username, password });
         const { access_token, user } = response;
 
+        // 检查用户是否有任何权限
+        const hasPermission = user.is_system_role || 
+          (user.accessible_modules && user.accessible_modules.length > 0);
+        
+        if (!hasPermission) {
+          // 无任何权限，提示用户
+          toast.error("您的账户没有访问权限，请联系管理员");
+          logger.warn("User has no permissions", { username: user.username });
+          return;
+        }
+
         authStore.setToken(access_token);
         authStore.setUser(user);
 

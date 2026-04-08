@@ -67,13 +67,14 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
   );
   
   const getFallbackPath = useCallback(() => {
-    if (!user) return "/forbidden";
+    if (!user) return "/login";
     for (const item of currentShell.menuItems) {
       if (canAccessModule(user, item.module)) {
         return item.path;
       }
     }
-    return "/forbidden";
+    // 没有任何权限，返回登录页
+    return "/login";
   }, [currentShell.menuItems, user]);
 
   const fallbackPath = getFallbackPath();
