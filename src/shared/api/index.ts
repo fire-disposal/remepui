@@ -14,10 +14,16 @@ export { userApi } from "./user";
 export { patientApi } from "./patient";
 export { deviceApi } from "./device";
 export { bindingApi } from "./binding";
-export { dataApi } from "./data";
+export { dataApi, type AcknowledgeRequest, type ResolveRequest } from "./data";
 export { roleApi, moduleApi, isAdmin, hasRoleName, hasRoleId } from "./role";
 export { auditApi } from "./audit";
 export { rawDataApi } from "./raw-data";
 
 // React Query hooks
 export * from "./hooks";
+export {
+  useDataSubscription,
+  useAlerts,
+  useAcknowledgeEvent,
+  useResolveEvent,
+} from "./useDataSubscription";
