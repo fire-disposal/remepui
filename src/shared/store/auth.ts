@@ -95,51 +95,55 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   hydrate: () => {
-    // 从本地存储恢复认证状态
-    const token = localStorage.getItem(STORAGE_KEY);
-    const userStr = localStorage.getItem(USER_STORAGE_KEY);
+    try {
+      const token = localStorage.getItem(STORAGE_KEY);
+      const userStr = localStorage.getItem(USER_STORAGE_KEY);
 
-    if (token && userStr) {
-      // 检查 token 是否过期
-      if (isTokenExpired(token)) {
-        logger.info('Token expired, clearing auth state');
-        localStorage.removeItem(STORAGE_KEY);
-        localStorage.removeItem(USER_STORAGE_KEY);
-        set({ loading: false });
-        return;
-      }
-
-      try {
-        const user = JSON.parse(userStr);
-        
-        // 检查是否包含 accessible_modules 字段
-        if (!Array.isArray(user.accessible_modules)) {
-          logger.info('Old user data format detected, clearing auth state');
+      if (token && userStr) {
+        if (isTokenExpired(token)) {
+          logger.info('Token expired, clearing auth state');
           localStorage.removeItem(STORAGE_KEY);
           localStorage.removeItem(USER_STORAGE_KEY);
           set({ loading: false });
-          
-          setTimeout(() => {
-            showTokenExpiredDialog(
-              '系统权限架构已更新',
-              '检测到旧版本登录状态，请重新登录以使用新功能。'
-            );
-          }, 500);
           return;
         }
-        
-        set({
-          token,
-          user,
-          isAuthenticated: true,
-          loading: false,
-        });
-        logger.info('Auth state hydrated from storage');
-      } catch (e) {
-        logger.error('Failed to hydrate auth state', e);
+
+        try {
+          const user = JSON.parse(userStr);
+          
+          if (!Array.isArray(user.accessible_modules)) {
+            logger.info('Old user data format detected, clearing auth state');
+            localStorage.removeItem(STORAGE_KEY);
+            localStorage.removeItem(USER_STORAGE_KEY);
+            set({ loading: false });
+            
+            setTimeout(() => {
+              showTokenExpiredDialog(
+                '系统权限架构已更新',
+                '检测到旧版本登录状态，请重新登录以使用新功能。'
+              );
+            }, 500);
+            return;
+          }
+          
+          set({
+            token,
+            user,
+            isAuthenticated: true,
+            loading: false,
+          });
+          logger.info('Auth state hydrated from storage');
+        } catch (parseError) {
+          logger.error('Failed to parse user data', parseError);
+          localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem(USER_STORAGE_KEY);
+          set({ loading: false });
+        }
+      } else {
         set({ loading: false });
       }
-    } else {
+    } catch (error) {
+      logger.error('Hydration error', error);
       set({ loading: false });
     }
   },

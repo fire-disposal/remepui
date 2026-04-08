@@ -62,7 +62,6 @@ const checkAlreadyLoggedIn = async () => {
  * 确保用户有权限访问指定模块
  */
 const checkModuleAccess = (module: ModuleCode) => async () => {
-  // 等待 hydration 完成
   await waitForAuthHydration();
   
   const state = useAuthStore.getState();
@@ -75,7 +74,13 @@ const checkModuleAccess = (module: ModuleCode) => async () => {
   
   if (!canAccessModule(user, module)) {
     const accessibleModules = user?.accessible_modules || [];
-    const fallbackPath = getFallbackPath(accessibleModules);
+    
+    if (accessibleModules.length === 0 && !user?.is_system_role) {
+      state.logout();
+      throw redirect({ to: "/login" });
+    }
+    
+    const fallbackPath = getFallbackPath(accessibleModules, user?.is_system_role);
     throw redirect({ to: fallbackPath });
   }
 };

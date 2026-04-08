@@ -17,21 +17,40 @@ export function RootComponent() {
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
-    // 统一在这里处理 hydration
-    hydrateAuth();
-    hydrateShell();
+    const doHydration = async () => {
+      try {
+        hydrateAuth();
+        hydrateShell();
+        
+        await new Promise(resolve => setTimeout(resolve, 0));
+        
+        setIsHydrated(true);
+      } catch (error) {
+        console.error('Hydration failed:', error);
+        setIsHydrated(true);
+      }
+    };
     
-    // 标记 hydration 完成
-    setIsHydrated(true);
+    doHydration();
   }, [hydrateAuth, hydrateShell]);
 
-  // 等待 hydration 完成
-  if (!isHydrated || authLoading) {
+  if (!isHydrated) {
     return (
       <Center style={{ height: '100vh' }}>
         <Stack align="center" gap="md">
           <Loader size="lg" />
-          <Text c="dimmed">正在加载...</Text>
+          <Text c="dimmed">初始化应用...</Text>
+        </Stack>
+      </Center>
+    );
+  }
+
+  if (authLoading) {
+    return (
+      <Center style={{ height: '100vh' }}>
+        <Stack align="center" gap="md">
+          <Loader size="lg" />
+          <Text c="dimmed">恢复登录状态...</Text>
         </Stack>
       </Center>
     );
