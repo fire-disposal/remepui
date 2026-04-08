@@ -26,7 +26,7 @@ import {
   Divider,
   Modal,
 } from '@mantine/core';
-import { DateInput } from '@mantine/dates';
+// 使用原生日期输入，移除对 @mantine/dates 的依赖
 import {
   IconDatabase,
   IconRefresh,
@@ -293,21 +293,19 @@ export const RawDataPage = () => {
                 clearable
                 style={{ width: 150 }}
               />
-              <DateInput
+              <TextInput
+                type="date"
                 placeholder="开始时间"
-                value={filterStartTime}
-                onChange={setFilterStartTime}
-                clearable
+                value={filterStartTime ?? ''}
+                onChange={(e) => setFilterStartTime(e.currentTarget.value || null)}
                 style={{ width: 180 }}
-                valueFormat="YYYY-MM-DD"
               />
-              <DateInput
+              <TextInput
+                type="date"
                 placeholder="结束时间"
-                value={filterEndTime}
-                onChange={setFilterEndTime}
-                clearable
+                value={filterEndTime ?? ''}
+                onChange={(e) => setFilterEndTime(e.currentTarget.value || null)}
                 style={{ width: 180 }}
-                valueFormat="YYYY-MM-DD"
               />
             </Group>
           </Stack>

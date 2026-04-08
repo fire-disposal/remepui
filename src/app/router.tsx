@@ -1,4 +1,4 @@
-import { RootRoute, Route, Router, redirect, NotFoundRoute } from "@tanstack/react-router";
+import { RootRoute, Route, Router, redirect } from "@tanstack/react-router";
 import { LoginPage } from "../modules/auth/pages/LoginPage";
 import { DashboardPage } from "../modules/dashboard/pages/DashboardPage";
 import { PatientListPage } from "../modules/patients/pages/PatientListPage";
@@ -33,7 +33,16 @@ const waitForAuthHydration = async (): Promise<void> => {
   }
   
   return new Promise((resolve) => {
-    onAuthHydrationComplete(resolve);
+    // 增加超时保护，防止认证状态恢复永久挂起导致白屏
+    const timeout = setTimeout(() => {
+      console.warn("[ROUTER] Auth hydration timeout - resolving to prevent deadlock");
+      resolve();
+    }, 3000);
+
+    onAuthHydrationComplete(() => {
+      clearTimeout(timeout);
+      resolve();
+    });
   });
 };
 
@@ -148,10 +157,40 @@ const checkSystemRole = async () => {
 };
 
 /**
+ * 404 页面组件
+ */
+const NotFoundComponent = () => (
+    <div style={{ 
+      display: "flex", 
+      flexDirection: "column", 
+      alignItems: "center", 
+      justifyContent: "center", 
+      minHeight: "60vh",
+      gap: "16px"
+    }}>
+      <h1 style={{ fontSize: "72px", margin: 0, color: "#868e96" }}>404</h1>
+      <p style={{ color: "#868e96", margin: 0 }}>页面不存在</p>
+      <a 
+        href="/" 
+        style={{ 
+          color: "#228be6", 
+          textDecoration: "none",
+          padding: "8px 16px",
+          border: "1px solid #228be6",
+          borderRadius: "4px"
+        }}
+      >
+        返回首页
+      </a>
+    </div>
+);
+
+/**
  * 根路由
  */
 const rootRoute = new RootRoute({
   component: RootComponent,
+  notFoundComponent: NotFoundComponent,
 });
 
 /**
@@ -305,38 +344,6 @@ const pressureUlcerRoute = new Route({
 });
 
 /**
- * 404 路由
- */
-const notFoundRoute = new NotFoundRoute({
-  getParentRoute: () => rootRoute,
-  component: () => (
-    <div style={{ 
-      display: "flex", 
-      flexDirection: "column", 
-      alignItems: "center", 
-      justifyContent: "center", 
-      minHeight: "60vh",
-      gap: "16px"
-    }}>
-      <h1 style={{ fontSize: "72px", margin: 0, color: "#868e96" }}>404</h1>
-      <p style={{ color: "#868e96", margin: 0 }}>页面不存在</p>
-      <a 
-        href="/" 
-        style={{ 
-          color: "#228be6", 
-          textDecoration: "none",
-          padding: "8px 16px",
-          border: "1px solid #228be6",
-          borderRadius: "4px"
-        }}
-      >
-        返回首页
-      </a>
-    </div>
-  ),
-});
-
-/**
  * 创建路由树
  */
 const routeTree = rootRoute.addChildren([
@@ -362,8 +369,8 @@ const routeTree = rootRoute.addChildren([
  */
 export const router = new Router({
   routeTree,
-  notFoundRoute,
   defaultPreload: "intent",
+  notFoundMode: "root",
 });
 
 declare module "@tanstack/react-router" {
