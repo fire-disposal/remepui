@@ -515,3 +515,24 @@ export interface RawDataQuery {
   page?: number;
   page_size?: number;
 }
+
+// ==================== 原始数据详情（包含完整原始字节）====================
+
+export interface RawDataDetail {
+  id: string;
+  source: string;
+  serial_number?: string | null;
+  device_type?: string | null;
+  remote_addr?: string | null;
+  metadata: Record<string, unknown>;
+  status: string;
+  status_message?: string | null;
+  payload_size: number;
+  raw_payload_base64: string;
+  raw_payload_text?: string | null;
+  raw_payload_hex: string;
+  received_at: string;
+  processed_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}

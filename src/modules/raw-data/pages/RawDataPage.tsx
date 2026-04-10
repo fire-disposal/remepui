@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Container,
   Title,
@@ -14,10 +14,8 @@ import {
   Loader,
   Center,
   Pagination,
-  Flex,
   Select,
   TextInput,
-  Chip,
   Drawer,
   ScrollArea,
   Checkbox,
@@ -25,22 +23,23 @@ import {
   Alert,
   Divider,
   Modal,
+  Tabs,
+  Code,
+  CopyButton,
 } from '@mantine/core';
-// 使用原生日期输入，移除对 @mantine/dates 的依赖
 import {
   IconDatabase,
   IconRefresh,
-  IconFilter,
   IconEye,
   IconDownload,
   IconTrash,
-  IconChevronDown,
   IconFileText,
   IconCheck,
   IconX,
   IconAlertCircle,
+  IconCopy,
 } from '@tabler/icons-react';
-import { useRawData, rawDataApi } from '../../../shared/api';
+import { useRawData, useRawDataDetail, rawDataApi } from '../../../shared/api';
 import { JsonViewer } from '../components/JsonViewer';
 import { notifications } from '@mantine/notifications';
 
@@ -50,6 +49,20 @@ const STATUS_CONFIG = {
   ignored: { color: 'gray', label: '已忽略' },
   format_error: { color: 'orange', label: '格式错误' },
   processing_error: { color: 'red', label: '处理错误' },
+};
+
+// 格式化字节数为可读格式
+const formatBytes = (bytes: number): string => {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
+};
+
+// 将十六进制字符串格式化为带空格的形式
+const formatHex = (hex: string): string => {
+  return hex.match(/.{1,2}/g)?.join(' ') || hex;
 };
 
 export const RawDataPage = () => {
@@ -63,7 +76,7 @@ export const RawDataPage = () => {
   const [filterEndTime, setFilterEndTime] = useState<string | null>(null);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
-  const [selectedRecord, setSelectedRecord] = useState<any | null>(null);
+  const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const [exportModalOpen, setExportModalOpen] = useState(false);
 
   const { data, isLoading, refetch, isFetching } = useRawData({
@@ -76,6 +89,9 @@ export const RawDataPage = () => {
     page,
     page_size: pageSize,
   });
+
+  // 使用详情接口获取完整数据（包含原始字节）
+  const { data: detailData, isLoading: isDetailLoading } = useRawDataDetail(selectedRecordId);
 
   const records = data?.data || [];
   const pagination = data?.pagination;
@@ -101,8 +117,13 @@ export const RawDataPage = () => {
   };
 
   const handleViewDetail = (record: any) => {
-    setSelectedRecord(record);
+    setSelectedRecordId(record.id);
     setDetailDrawerOpen(true);
+  };
+
+  const handleCloseDetail = () => {
+    setDetailDrawerOpen(false);
+    setSelectedRecordId(null);
   };
 
   const handleExport = async (format: 'json' | 'csv') => {
@@ -149,7 +170,6 @@ export const RawDataPage = () => {
     if (!confirm(`确定要删除 ${selectedRows.size} 条记录吗？此操作不可恢复。`)) return;
 
     try {
-      // 模拟批量删除
       notifications.show({
         title: '删除中',
         message: `正在删除 ${selectedRows.size} 条记录...`,
@@ -185,23 +205,20 @@ export const RawDataPage = () => {
     return Array.from(types).map(t => ({ value: t!, label: t! }));
   }, [records]);
 
-  const stats = useMemo(() => {
-    const byStatus: Record<string, number> = {};
-    const bySource: Record<string, number> = {};
-
-    records.forEach(r => {
-      byStatus[r.status] = (byStatus[r.status] || 0) + 1;
-      if (r.source) {
-        bySource[r.source] = (bySource[r.source] || 0) + 1;
+  // 从 Base64 解码原始数据
+  const decodedRawData = useMemo(() => {
+    if (!detailData?.raw_payload_base64) return null;
+    try {
+      const binaryString = atob(detailData.raw_payload_base64);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
       }
-    });
-
-    return {
-      total: pagination?.total || 0,
-      byStatus,
-      bySource,
-    };
-  }, [records, pagination]);
+      return bytes;
+    } catch {
+      return null;
+    }
+  }, [detailData?.raw_payload_base64]);
 
   return (
     <Container fluid py="md">
@@ -216,7 +233,7 @@ export const RawDataPage = () => {
               </Group>
             </Title>
             <Text size="sm" color="dimmed" mt={4}>
-              查看和管理设备上报的原始数据
+              查看和管理设备上报的原始数据，支持原始字节诊断
             </Text>
           </div>
           <Group>
@@ -409,7 +426,7 @@ export const RawDataPage = () => {
                       </Table.Td>
                       <Table.Td>
                         <Text size="sm" color="dimmed">
-                          {record.payload_size ? `${record.payload_size} B` : '-'}
+                          {record.payload_size ? formatBytes(record.payload_size) : '-'}
                         </Text>
                       </Table.Td>
                       <Table.Td>
@@ -419,7 +436,7 @@ export const RawDataPage = () => {
                       </Table.Td>
                       <Table.Td>
                         <Group justify="flex-end" gap="xs">
-                          <Tooltip label="查看详情">
+                          <Tooltip label="查看详情（含原始字节）">
                             <ActionIcon
                               variant="subtle"
                               color="blue"
@@ -453,67 +470,73 @@ export const RawDataPage = () => {
         )}
       </Stack>
 
-      {/* 详情抽屉 */}
+      {/* 详情抽屉 - 包含原始字节诊断 */}
       <Drawer
         opened={detailDrawerOpen}
-        onClose={() => {
-          setDetailDrawerOpen(false);
-          setSelectedRecord(null);
-        }}
-        title="数据详情"
+        onClose={handleCloseDetail}
+        title="原始数据详情（诊断视图）"
         position="right"
-        size="lg"
+        size="xl"
       >
-        {selectedRecord && (
+        {isDetailLoading ? (
+          <Center p="xl">
+            <Loader />
+          </Center>
+        ) : detailData ? (
           <Stack gap="md">
+            {/* 基本信息 */}
             <Paper p="md" withBorder>
               <Stack gap="xs">
                 <Group>
                   <Text fw={500} style={{ width: 100 }}>ID:</Text>
-                  <Text size="sm" color="dimmed">{selectedRecord.id}</Text>
+                  <Text size="sm" color="dimmed" style={{ fontFamily: 'monospace' }}>{detailData.id}</Text>
                 </Group>
                 <Group>
                   <Text fw={500} style={{ width: 100 }}>来源:</Text>
-                  <Badge variant="light">{selectedRecord.source}</Badge>
+                  <Badge variant="light">{detailData.source}</Badge>
                 </Group>
                 <Group>
                   <Text fw={500} style={{ width: 100 }}>序列号:</Text>
-                  <Text size="sm">{selectedRecord.serial_number || '-'}</Text>
+                  <Text size="sm">{detailData.serial_number || '-'}</Text>
                 </Group>
                 <Group>
                   <Text fw={500} style={{ width: 100 }}>设备类型:</Text>
-                  <Text size="sm">{selectedRecord.device_type || '-'}</Text>
+                  <Text size="sm">{detailData.device_type || '-'}</Text>
+                </Group>
+                <Group>
+                  <Text fw={500} style={{ width: 100 }}>远程地址:</Text>
+                  <Text size="sm" color="dimmed">{detailData.remote_addr || '-'}</Text>
                 </Group>
                 <Group>
                   <Text fw={500} style={{ width: 100 }}>状态:</Text>
                   <Badge
                     variant="light"
-                    color={STATUS_CONFIG[selectedRecord.status]?.color || 'gray'}
+                    color={STATUS_CONFIG[detailData.status]?.color || 'gray'}
                   >
-                    {STATUS_CONFIG[selectedRecord.status]?.label || selectedRecord.status}
+                    {STATUS_CONFIG[detailData.status]?.label || detailData.status}
                   </Badge>
                 </Group>
-                {selectedRecord.status_message && (
+                {detailData.status_message && (
                   <Group>
                     <Text fw={500} style={{ width: 100 }}>状态说明:</Text>
-                    <Text size="sm" color="dimmed">{selectedRecord.status_message}</Text>
+                    <Text size="sm" color="dimmed">{detailData.status_message}</Text>
                   </Group>
                 )}
                 <Group>
                   <Text fw={500} style={{ width: 100 }}>载荷大小:</Text>
-                  <Text size="sm">{selectedRecord.payload_size || 0} 字节</Text>
+                  <Text size="sm">{formatBytes(detailData.payload_size)}</Text>
                 </Group>
                 <Group>
                   <Text fw={500} style={{ width: 100 }}>接收时间:</Text>
                   <Text size="sm">
-                    {new Date(selectedRecord.received_at).toLocaleString('zh-CN')}
+                    {new Date(detailData.received_at).toLocaleString('zh-CN')}
                   </Text>
                 </Group>
-                {selectedRecord.processed_at && (
+                {detailData.processed_at && (
                   <Group>
                     <Text fw={500} style={{ width: 100 }}>处理时间:</Text>
                     <Text size="sm">
-                      {new Date(selectedRecord.processed_at).toLocaleString('zh-CN')}
+                      {new Date(detailData.processed_at).toLocaleString('zh-CN')}
                     </Text>
                   </Group>
                 )}
@@ -522,13 +545,149 @@ export const RawDataPage = () => {
 
             <Divider />
 
-            <JsonViewer
-              data={selectedRecord.raw_payload_preview || {}}
-              title="载荷预览"
-              maxHeight={500}
-            />
+            {/* 原始数据诊断 - 使用 Tabs 切换不同视图 */}
+            <Tabs defaultValue="text">
+              <Tabs.List>
+                <Tabs.Tab value="text" leftSection={<IconFileText size={14} />}>文本视图</Tabs.Tab>
+                <Tabs.Tab value="hex" leftSection={<IconDatabase size={14} />}>十六进制</Tabs.Tab>
+                <Tabs.Tab value="base64" leftSection={<IconCopy size={14} />}>Base64</Tabs.Tab>
+                {decodedRawData && (
+                  <Tabs.Tab value="binary" leftSection={<IconDatabase size={14} />}>二进制分析</Tabs.Tab>
+                )}
+              </Tabs.List>
+
+              <Tabs.Panel value="text" pt="md">
+                {detailData.raw_payload_text ? (
+                  <JsonViewer
+                    data={detailData.raw_payload_text}
+                    title="原始文本内容"
+                    maxHeight={500}
+                  />
+                ) : (
+                  <Alert color="yellow" icon={<IconAlertCircle size={16} />}>
+                    无法将原始数据解码为 UTF-8 文本，可能是二进制数据
+                  </Alert>
+                )}
+              </Tabs.Panel>
+
+              <Tabs.Panel value="hex" pt="md">
+                <Paper withBorder p="sm">
+                  <Group justify="space-between" mb="sm">
+                    <Text fw={500}>十六进制表示</Text>
+                    <CopyButton value={detailData.raw_payload_hex}>
+                      {({ copied, copy }) => (
+                        <Button
+                          size="xs"
+                          variant="light"
+                          leftSection={copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+                          onClick={copy}
+                          color={copied ? 'green' : 'gray'}
+                        >
+                          {copied ? '已复制' : '复制'}
+                        </Button>
+                      )}
+                    </CopyButton>
+                  </Group>
+                  <ScrollArea.Autosize mah={500}>
+                    <Code
+                      block
+                      style={{
+                        fontFamily: 'monospace',
+                        fontSize: '12px',
+                        lineHeight: '1.6',
+                        wordBreak: 'break-all',
+                        whiteSpace: 'pre-wrap',
+                      }}
+                    >
+                      {formatHex(detailData.raw_payload_hex)}
+                    </Code>
+                  </ScrollArea.Autosize>
+                </Paper>
+              </Tabs.Panel>
+
+              <Tabs.Panel value="base64" pt="md">
+                <Paper withBorder p="sm">
+                  <Group justify="space-between" mb="sm">
+                    <Text fw={500}>Base64 编码</Text>
+                    <CopyButton value={detailData.raw_payload_base64}>
+                      {({ copied, copy }) => (
+                        <Button
+                          size="xs"
+                          variant="light"
+                          leftSection={copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+                          onClick={copy}
+                          color={copied ? 'green' : 'gray'}
+                        >
+                          {copied ? '已复制' : '复制'}
+                        </Button>
+                      )}
+                    </CopyButton>
+                  </Group>
+                  <ScrollArea.Autosize mah={500}>
+                    <Code
+                      block
+                      style={{
+                        fontFamily: 'monospace',
+                        fontSize: '12px',
+                        wordBreak: 'break-all',
+                      }}
+                    >
+                      {detailData.raw_payload_base64}
+                    </Code>
+                  </ScrollArea.Autosize>
+                </Paper>
+              </Tabs.Panel>
+
+              {decodedRawData && (
+                <Tabs.Panel value="binary" pt="md">
+                  <Paper withBorder p="sm">
+                    <Text fw={500} mb="sm">二进制数据分析</Text>
+                    <Stack gap="xs">
+                      <Group>
+                        <Text size="sm" fw={500} style={{ width: 120 }}>数据长度:</Text>
+                        <Text size="sm">{decodedRawData.length} 字节</Text>
+                      </Group>
+                      <Group>
+                        <Text size="sm" fw={500} style={{ width: 120 }}>首字节:</Text>
+                        <Text size="sm" style={{ fontFamily: 'monospace' }}>
+                          0x{decodedRawData[0]?.toString(16).padStart(2, '0').toUpperCase() || 'N/A'} 
+                          ({decodedRawData[0] || 'N/A'})
+                        </Text>
+                      </Group>
+                      <Group>
+                        <Text size="sm" fw={500} style={{ width: 120 }}>末字节:</Text>
+                        <Text size="sm" style={{ fontFamily: 'monospace' }}>
+                          0x{decodedRawData[decodedRawData.length - 1]?.toString(16).padStart(2, '0').toUpperCase() || 'N/A'} 
+                          ({decodedRawData[decodedRawData.length - 1] || 'N/A'})
+                        </Text>
+                      </Group>
+                      <Group align="flex-start">
+                        <Text size="sm" fw={500} style={{ width: 120 }}>前 32 字节:</Text>
+                        <Code style={{ fontFamily: 'monospace', fontSize: '12px' }}>
+                          {Array.from(decodedRawData.slice(0, 32))
+                            .map(b => b.toString(16).padStart(2, '0').toUpperCase())
+                            .join(' ')}
+                        </Code>
+                      </Group>
+                    </Stack>
+                  </Paper>
+                </Tabs.Panel>
+              )}
+            </Tabs>
+
+            {/* 元数据 */}
+            {detailData.metadata && Object.keys(detailData.metadata).length > 0 && (
+              <>
+                <Divider />
+                <JsonViewer
+                  data={detailData.metadata}
+                  title="元数据"
+                  maxHeight={300}
+                />
+              </>
+            )}
           </Stack>
-        )}
+        ) : null}
       </Drawer>
 
       {/* 导出模态框 */}

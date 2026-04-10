@@ -509,6 +509,15 @@ export function useRawData(query?: RawDataQuery) {
   });
 }
 
+export function useRawDataDetail(id: string | null) {
+  return useQuery({
+    queryKey: ["raw-data-detail", id],
+    queryFn: () => rawDataApi.getDetail(id!),
+    ...detailQueryConfig,
+    enabled: !!id,
+  });
+}
+
 // ==================== 预取工具函数 ====================
 
 export function usePrefetchUser() {

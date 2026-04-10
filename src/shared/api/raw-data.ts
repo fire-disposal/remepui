@@ -1,5 +1,5 @@
 import { apiClient } from "./client";
-import type { RawDataQuery, RawDataQueryResponse } from "./types";
+import type { RawDataQuery, RawDataQueryResponse, RawDataDetail } from "./types";
 
 export type ExportFormat = 'json' | 'csv';
 
@@ -13,6 +13,14 @@ export const rawDataApi = {
    */
   async query(params?: RawDataQuery): Promise<RawDataQueryResponse> {
     return apiClient.get("/ingest/raw", { params }) as unknown as Promise<RawDataQueryResponse>;
+  },
+
+  /**
+   * 获取单条原始数据详情（包含完整原始字节）
+   * GET /ingest/raw/{id}
+   */
+  async getDetail(id: string): Promise<RawDataDetail> {
+    return apiClient.get(`/ingest/raw/${id}`) as unknown as Promise<RawDataDetail>;
   },
 
   /**
